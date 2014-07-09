@@ -17,4 +17,6 @@ interface ProtokolHead{
     public function getBannetInChannel($cid);
     public function banUser($cid,$uid,$banTo);
     public function remove_ban($uid,$cid,$id);
+    public function getBanId($cid,$uid);
+    public function kick($cid,$uid);
 }

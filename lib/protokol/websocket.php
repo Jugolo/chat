@@ -157,4 +157,15 @@ class Protokol implements ProtokolHead{
         $i = array_search($uid,$this->bannet[$cid]);
         unset($this->bannet[$cid][$i]);
     }
+
+    function getBanId($c,$u){return null;}//this protokol dosent need this :)
+
+    function kick($cid,$uid){
+        if(empty($this->client[$uid]->channel[$cid])){
+            return false;
+        }
+
+        unset($this->client[$uid]->channel[$cid]);
+        unset($this->client[$uid]->aktiv[$cid]);
+    }
 }

@@ -435,7 +435,7 @@ var System = (function () {
                     },msg['id'],"red"));
                     this.remove_user_from_online_list(this.trim(msg['nick']));
                 }else{
-                    alert("Error no user found");
+                    //alert("Error no user found");
                 }
             break;
             case 'leave':

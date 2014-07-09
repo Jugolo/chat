@@ -766,6 +766,10 @@
          $this->config = array();
          $this->loadDatabaseConfig();
 
+         if($this->getConfig("protokol") != "socket" && $this->websocket){
+             exit("Server gooinh down!");
+         }
+
          //okay now wee can tell user this system is now updatet :)
          $this->sendBotPrivMessage(
              $this->getVariabel("cid"),
@@ -781,9 +785,6 @@
                  if(!in_array($uid,$this->protokol->get_ignore())){
                      return $this->sendBotPrivMessage($this->getVariabel("cid"),"/error ".$this->lang['isNotIgnore']);
                  }
-
-                 mysqli_query(self::$mysql,"DELETE FROM `".DB_PREFIX."chat_ignore` WHERE `uid`='".(int)$this->protokol->user['user_id']."' AND `ignore`='".$uid."'");
-
                  $this->protokol->remove_ignore($uid);
                  $this->sendBotPrivMessage($this->getVariabel("cid"),"/unIgnore ".$reg[1],"green");
              }else{
@@ -801,16 +802,6 @@
                  if(in_array($uid,$this->protokol->get_ignore())){
                    return $this->sendBotPrivMessage($this->getVariabel("cid"),"/error ".$this->lang['isIgnore'],"red");
                  }
-
-                 mysqli_query(self::$mysql,"INSERT INTO `".DB_PREFIX."chat_ignore`
-                 (
-                 `uid`,
-                 `ignore`
-                 ) VALUES(
-                 '".$this->protokol->user['user_id']."',
-                 '".$uid."'
-                 )");
-
                  $this->sendBotPrivMessage($this->getVariabel("cid"),"/ignore ".$reg[1]);
                  $this->protokol->add_ignore($uid);
              }else{
@@ -832,22 +823,32 @@
 		} 
 		 
 		 if(preg_match("/^\/unban\s([a-zA-Z]*?)$/",$input['message'],$reg)){
-		 $sql = mysqli_query(self::$mysql,"SELECT user.user_id AS uid, cm.id AS mid, cm.ban AS ban
-		FROM `".DB_PREFIX."chat_member` AS cm
-		LEFT JOIN `".DB_PREFIX."users` as user ON cm.uid=user.user_id
-		WHERE user.nick='".mysqli_escape_string(self::$mysql,$reg[1])."'
-		AND cm.cid='".(int)$this->getVariabel("cid")."'");
-			 $row = mysqli_fetch_array($sql);
-			 if(empty($row['uid'])){
-				 $this->sendBotPrivMessage($this->getVariabel("cid"),"/error ".$this->lang['userNotFound']);
-			 }else{
-				 if($row['ban'] == Yes){
-					 mysqli_query(self::$mysql,"DELETE FROM `".DB_PREFIX."chat_member` WHERE `id`='".$row['mid']."'");
-					 $this->sendBotMessage($this->getVariabel("cid"),$input['message'],"green");
-				 }else{
-					 $this->sendBotPrivMessage($this->getVariabel("cid"),"/error ".sprintf($this->lang['NotBan'],$reg[1]));
-				 }
-			 }
+             $userData = $this->protokol->getUserInChannel($this->getVariabel("cid"),$reg[1]);
+             if($userData === false){
+                 $this->sendBotPrivMessage(
+                     $this->getVariabel("cid"),
+                     "/error ".$this->lang['userNotFound']
+                 );
+                 return;
+             }
+
+             if(in_array($userData['user_id'],$this->protokol->getBannetInChannel($this->getVariabel("cid")))){
+                 $this->protokol->remove_ban(
+                     $userData['user_id'],
+                     $this->getVariabel("cid"),
+                     $this->protokol->getBanId($userData['user_id'],$this->getVariabel("cid"))
+                 );
+                 $this->sendBotMessage(
+                     $this->getVariabel("cid"),
+                     $input['message'],
+                     "green"
+                 );
+             }else{
+                 $this->sendBotPrivMessage(
+                     $this->getVariabel("cid"),
+                     "/error ".sprintf($this->lang['notBan'],$reg[1])
+                 );
+             }
 		 }else{
 			 $this->sendBotPrivMessage($this->getVariabel("cid"),"/error ".$this->lang['unbanBroken']);
 		 }
@@ -958,15 +959,17 @@
 	}
     
     private function doExit(){
+
+        foreach($this->protokol->get_my_channel_list() AS $cid => $data){
+            $this->sendBotMessage(
+                $this->getVariabel("cid"),
+                "/exit"
+            );
+        }
+
         if($this->websocket){
             $this->remove_client($this->getVariabel("client")->socket);
         }
-
-    	$sql = mysqli_query(self::$mysql,"SELECT `cid`,`id` FROM `".DB_PREFIX."chat_member` WHERE `uid`='".$this->protokol->user['user_id']."' AND `cid`<>'1' AND `ban` <> '".Yes."'");
-    	while($row = mysqli_fetch_array($sql)){
-    		$this->sendBotMessage($row['cid'], "/exit");
-            mysqli_query(self::$mysql,"DELETE FROM `".DB_PREFIX."chat_member` WHERE `id`='".(int)$row['id']."'");
-    	}
     }
     
     private function doTitle(){
@@ -1801,7 +1804,7 @@
 	 //Yes my dear :D 
 	 private function kick($channel,$message = null,$uid = 0, $sendMessage = true){
 		 if($uid === 0){
-			 $uid = $this->user['user_id'];
+			 $uid = $this->protokol->user['user_id'];
 		 }
 
          if(!is_numeric($channel)){
@@ -1814,8 +1817,6 @@
 			 return;
 		 }
 
-
-
          if($sendMessage){
              $this->sendBotPrivMessage(
                  1,
@@ -1825,23 +1826,11 @@
                  $uid//kun for denne bruger :D
              );
          }
-		 //vi skal nu slette ham fra channel ;) 
-		 mysqli_query(self::$mysql,"DELETE FROM `".DB_PREFIX."chat_member` WHERE `uid`='".(int)$uid."' AND `cid`='".(int)$cid."'");
 
-         if(self::$mysql->error){
-             exit(self::$mysql->error);
-         }
-
-	     //hvis vi bruger websocket skal vi have det at vide :)
-         if($this->websocket){
-             //vi løber clienterne for at finde den rigtige bruger ;)
-             $clients = $this->clientObj;
-             for($i=0;$i<count($clients);$i++){
-                 if($clients[$i]->isLogin && $clients[$i]->user['user_id'] == $uid){
-                     $clients[$i]->kick($cid);
-                 }
-             }
-         }
+         $this->protokol->kick(
+             $cid,
+             $uid
+         );
 
          if($sendMessage){
              $this->sendBotMessage($cid, "/kick".($message !== null ? " ".$message : null),"red",$uid);

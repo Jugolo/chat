@@ -15,11 +15,20 @@ class Protokol implements ProtokolHead{
 
     function add_ignore($uid){
         $this->ignore[] = $uid;
+        mysqli_query(self::$mysql,"INSERT INTO `".DB_PREFIX."chat_ignore`
+                 (
+                 `uid`,
+                 `ignore`
+                 ) VALUES(
+                 '".$this->user['user_id']."',
+                 '".$uid."'
+                 )");
     }
 
     function remove_ignore($uid){
         if(($key = array_search($uid,$this->get_ignore())) !== false){
             unset($this->ignore[$key]);
+            mysqli_query(self::$mysql,"DELETE FROM `".DB_PREFIX."chat_ignore` WHERE `uid`='".(int)$this->user['user_id']."' AND `ignore`='".$uid."'");
         }
     }
 
