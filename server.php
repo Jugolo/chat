@@ -7,9 +7,7 @@
      private $userConfig       = array();
      private $cid              = null;
 	 private $lang             = array();
-	 private $showMsg          = true;
 	 private $websocket        = false;
-	 private $object           = array();
 	 private $client           = array();
 	 private $clientObj        = array();
 	 private $postData         = array();
@@ -111,7 +109,6 @@
          $this->add_socket_client($master);
 
          while($this->websocket){
-
              //vi beder om client :)
              foreach($this->client AS $socket){
                  $konto = $this->get_client($socket);
@@ -372,7 +369,7 @@
 		LEFT JOIN ".DB_PREFIX."chat_member AS cm ON tm.cid = cm.cid
 		LEFT JOIN ".DB_PREFIX."users AS user ON user.user_id = tm.uid
 		LEFT JOIN ".DB_PREFIX."chat_name AS tn ON tn.id = cm.cid
-		WHERE cm.uid = '".(int)$this->user['user_id']."'
+		WHERE cm.uid = '".(int)$this->protokol->user['user_id']."'
 		AND tm.id > '".(int)$this->getVariabel("last_id")."'
 		AND cm.ban <> '".Yes."'
 		ORDER BY tm.id ASC ");
@@ -516,8 +513,7 @@
             $use = 1;
 
         if($cache){
-            $this->variabel['cid'] = $use;
-            $this->cid             = $use;
+            $this->variabel['cid'] = $this->cid = $use;
         }
 
         return $use;
@@ -606,8 +602,6 @@
     }
     
     private function updateActivInChannel(){
-        $input = $this->init_get_data();
-
         if($this->websocket){
             //det er websocket ;)
             /**
@@ -652,7 +646,7 @@
             `isMsg`,
             `msgTo`
             ) VALUE (
-                '".(int)$this->user['user_id']."',
+                '".(int)$this->protokol->user['user_id']."',
                 '".(int)$this->getVariabel("cid")."',
                 '".No."',
                 NOW(),
@@ -938,19 +932,11 @@
 	}
     
     private function doExit(){
-		$uid = 0;
-		if($this->websocket){
-			$uid = (int)$this->getVariabel("client")->user['user_id'];
-		}else{
-			$uid = (int)$this->user['user_id'];
-		}
-
-
         if($this->websocket){
             $this->remove_client($this->getVariabel("client")->socket);
         }
 
-    	$sql = mysqli_query(self::$mysql,"SELECT `cid`,`id` FROM `".DB_PREFIX."chat_member` WHERE `uid`='".$uid."' AND `cid`<>'1' AND `ban` <> '".Yes."'");
+    	$sql = mysqli_query(self::$mysql,"SELECT `cid`,`id` FROM `".DB_PREFIX."chat_member` WHERE `uid`='".$this->protokol->user['user_id']."' AND `cid`<>'1' AND `ban` <> '".Yes."'");
     	while($row = mysqli_fetch_array($sql)){
     		$this->sendBotMessage($row['cid'], "/exit");
             mysqli_query(self::$mysql,"DELETE FROM `".DB_PREFIX."chat_member` WHERE `id`='".(int)$row['id']."'");
@@ -997,7 +983,7 @@
     			case 'sound':
                 case 'textColor':
                 case 'lang':
-			     	mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."chat_userConfig` SET `value`='".mysqli_escape_string(self::$mysql,$reg[2])."' WHERE `uid`='".($this->websocket ? $this->getVariabel("client")->user['user_id'] : $this->user['user_id'])."' AND `key`='".mysqli_escape_string(self::$mysql,$reg[1])."'");
+			     	mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."chat_userConfig` SET `value`='".mysqli_escape_string(self::$mysql,$reg[2])."' WHERE `uid`='".(int)$this->protokol->user['user_id']."' AND `key`='".mysqli_escape_string(self::$mysql,$reg[1])."'");
                     if(self::$mysql->error){
                         exit(self::$mysql->error);
                     }
@@ -1112,34 +1098,22 @@
                     );
                 }
             }else{
-                $nick = null;
-                $uid  = null;
+                $oldNick = $this->protokol->user['nick'];
+                mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."users` SET `nick`='".mysqli_escape_string(self::$mysql,$reg[1])."' WHERE `user_id`='".$this->protokol->user['user_id']."'");
+                $this->protokol->update_nick($reg[1]);
                 if($this->websocket){
-                    $nick = $this->getVariabel("client")->user['nick'];
-                    $uid  = (int)$this->getVariabel("client")->user['user_id'];
-                }else{
-                    $nick = $this->user['nick'];
-                    $uid  = (int)$this->user['user_id'];
-                }
-
-                mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."users` SET `nick`='".mysqli_escape_string(self::$mysql,$reg[1])."' WHERE `user_id`='".$uid."'");
-                if($this->websocket){
-                    $this->getVariabel("client")->update_my_nick($reg[1]);
                     foreach($this->getVariabel("client")->channel as $id => $name){
                         $this->sendBotMessage(
                             $id,
-                            '/nick '.$nick,
+                            '/nick '.$oldNick,
                             'green'
                         );
                     }
-
-                    $this->getVariabel("client")->user['nick'] = trim($nick);
-                    return;
-                }
-
-                $sql = mysqli_query(self::$mysql,"SELECT `cid` FROM `".DB_PREFIX."chat_member` WHERE `uid`='".$uid."' AND `cid`<>'1'");
-                while($row = mysqli_fetch_array($sql)){
-                    $this->sendBotMessage($row['cid'], "/nick ".$nick,"green");
+                }else{
+                    $sql = mysqli_query(self::$mysql,"SELECT `cid` FROM `".DB_PREFIX."chat_member` WHERE `uid`='".$this->protokol->user['user_id']."' AND `cid`<>'1'");
+                    while($row = mysqli_fetch_array($sql)){
+                        $this->sendBotMessage($row['cid'], "/nick ".$oldNick,"green");
+                    }
                 }
             }
         }else{
@@ -1303,25 +1277,15 @@
     private function answer_getStatus(){
         $this->sendBotPrivMessage(1,"/getStatus you are user");
 		$this->sendBotPrivMessage(1,"/config ".$this->getUserConfig());
-		
-		if($this->websocket){
-			$image = $this->getVariabel("client")->user['user_avatar'];
-		}else{
-			$image = $this->user["user_avatar"];
-		}
-		$this->sendBotPrivMessage($this->getVariabel("cid"),"/profilImage ".$this->convert_image($image));
+		$this->sendBotPrivMessage($this->getVariabel("cid"),"/profilImage ".$this->convert_image(
+                $this->protokol->user['user_avatar']
+            ));
     }
     
     //nick control
     
     private function nickKontrol($nick){
-		if($this->websocket){
-			$uid = (int)$this->getVariabel("client")->user['user_id'];
-		}else{
-			$uid = (int)$this->user['user_id'];
-		}
-		
-		$sql = mysqli_query(self::$mysql,"SELECT `user_id` FROM `".DB_PREFIX."users` WHERE `user_name`='".mysqli_escape_string(self::$mysql,$nick)."' AND `user_id`!='".$uid."' OR `nick`='".mysqli_escape_string(self::$mysql,$nick)."' AND `user_id`!='".$uid."'");
+		$sql = mysqli_query(self::$mysql,"SELECT `user_id` FROM `".DB_PREFIX."users` WHERE `user_name`='".mysqli_escape_string(self::$mysql,$nick)."' AND `user_id`!='".$this->protokol->user['user_id']."' OR `nick`='".mysqli_escape_string(self::$mysql,$nick)."' AND `user_id`!='".$this->protokol->user['user_id']."'");
     	$row = mysqli_fetch_array($sql);
     	return (empty($row['user_id']) ? true : false);
     }
@@ -1332,7 +1296,7 @@
 		
 		$sql = mysqli_query(self::$mysql,"SELECT *
 		FROM `".DB_PREFIX."chat_userConfig`
-		WHERE `uid`='".($this->websocket ? (int)$this->getVariabel("client")->user['user_id'] : (int)$this->user['user_id'])."'");
+		WHERE `uid`='".$this->protokol->user['user_id']."'");
 
     	while($row = mysqli_fetch_array($sql)){
     		$return[] = $row['key']."=".$row['value'];
@@ -1536,6 +1500,12 @@
     
     //session sektion
     private function sessionInit(){
+
+        //wee kontrol if header is sendt :)
+        if(headers_sent()){
+            exit("Header is allray sendt!");
+        }
+
         if(!$this->isSessionStarted()){
             $this->startSession();
         }
@@ -1711,7 +1681,6 @@
     private function sendBotPrivMessage($cid,$message,$color = false,$uid=null,$my=null){
 		
 		if($this->websocket){
-			$input = $this->init_get_data();
             $this->display(
                 ($cid === 1 ? 'Globel' : $this->protokol->get_channel_by_id($cid)),
                 'Bot',
@@ -1894,16 +1863,7 @@
      public  $isLogin     = false;
      private $cookie      = false;
      public  $aktiv       = array();
-     private $flood       = array();
      public  $ignore      = array();
-
-     function flood_count($cid){
-         return (empty($this->flood[$cid]) ? array() : $this->flood[$cid]);
-     }
-
-     function flood_update($cid,$array){
-         $this->flood[$cid] = $array;
-     }
 
      function update_post($cid){
          $is_inaktiv = $this->aktiv[$cid]['isInaktiv'];
@@ -1921,7 +1881,6 @@
                  continue;
              }
 
-             $time = time();
              if($leave != 0 && $data['lastActiv'] < strtotime("-".$leave." minutes")){
                  unset($this->channel[$cid]);
                  throw new Exception("leave",$cid);
@@ -2017,7 +1976,7 @@
 
          $msg['message'][0]['message'] = htmlentities($msg['message'][0]['message']);
          $msg = json_encode($msg);
-         echo $msg."\r\n";
+
          if($mask){
              $msg = $this->mask($msg);
          }
@@ -2207,10 +2166,3 @@
  }
  
 $server = new Server((empty($socket) ? false : true));
-
-function shutdown(){
-    global $server;
-    $server->luk();
-}
-
-register_shutdown_function("shutdown");

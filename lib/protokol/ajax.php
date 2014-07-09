@@ -150,4 +150,8 @@ class Protokol{
     function update_flood($flood,$cid){
         $_SESSION["flood"][$cid] = $flood;
     }
+
+    function update_nick($newNick){
+        $this->user['nick'] = $newNick;
+    }
 }

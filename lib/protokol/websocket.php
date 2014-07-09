@@ -116,4 +116,9 @@ class Protokol{
     function update_flood($flood){
         $this->flood[$this->user['user_id']] = $flood;
     }
+
+    function update_nick($newNick){
+        $this->client[$this->user['user_id']]->user['nick'] = $newNick;
+        $this->user['nick'] = $newNick;
+    }
 }
