@@ -66,16 +66,6 @@
         Json::show();
     }
 
-     function __destruct(){
-       $this->luk();
-     }
-
-     function luk(){
-         mysqli_close(self::$mysql);
-         foreach($this->clientObj as $soc => $obj)
-             $obj->disconnect();
-     }
-
 	 private function init_websocket(){
 
          if(!function_exists("socket_create")){
@@ -542,6 +532,11 @@
 		
 		$input = $this->init_get_data();
 
+        //WebSocket has a problem. bannet user can write in the channel soo wee control it now :)
+        if($this->getVariabel("cid") != 1 && in_array($this->protokol->user['user_id'],$this->protokol->getBannetInChannel($this->getVariabel("cid")))){
+            return;
+        }
+
     	if(preg_match("/^\//", $input['message'])){
     		$this->handleCommand();
             if($this->getVariabel("last_id")){
@@ -591,7 +586,7 @@
         //vi indsætter en for denne :)
         $count++;
 
-        if($count <= (int)$this->getConfig("flood")){
+        if($count <= (int)$this->sConfig["flood_interval"]){
             $new_flood[] = time();
 
             $this->protokol->update_flood($new_flood,$cid);
@@ -746,11 +741,38 @@
             case 'ping':
                 $this->sendBotPrivMessage(1,"/pong","green");
             break;
+            case 'update':
+                return $this->answer_update();
+            break;
             default:
             	$this->sendBotPrivMessage($this->getCidFromChannel($this->post("channel")), "/commandDenaid");
             break;
     	}
     }
+
+     private function answer_update(){
+         $input = $this->init_get_data();
+         if(!$this->iADMIN() && !$this->iSUPERADMIN()){
+             //has nothing to do here idiot :()
+             $this->sendBotPrivMessage($this->getVariabel("cid"), "/error ".sprintf($this->lang['accessDenaidKommando'],"/update"));
+             return;
+         }
+
+         //system config :)
+         $this->sConfig = array();
+         $this->init_system_setting();
+
+         //database config :)
+         $this->config = array();
+         $this->loadDatabaseConfig();
+
+         //okay now wee can tell user this system is now updatet :)
+         $this->sendBotPrivMessage(
+             $this->getVariabel("cid"),
+             $this->lang['systemUpdatet'],
+             "green"
+         );
+     }
 
      private function answer_uningore(){
          $input = $this->init_get_data();
@@ -843,21 +865,25 @@
 		 if(preg_match("/^\/ban\s([a-zA-Z]*?)\s([0-9]*?)$/",$input['message'],$reg)){
 			 //vi sætter nu tiden frem til den tidspunkt brugeren ikke længere er bannet ;)
 			 $to = strtotime("+".$reg[2]." minutes",time());
-			 $sql = mysqli_query(self::$mysql,"SELECT user.user_id AS id FROM `".DB_PREFIX."chat_member` AS cm
-			 LEFT JOIN `".DB_PREFIX."users` AS user ON cm.uid = user.user_id
-			 WHERE user.nick='".mysqli_escape_string(self::$mysql,$reg[1])."'
-			 AND cm.cid='".(int)$this->getVariabel("cid")."'");
-			 $row = mysqli_fetch_array($sql);
-			 if(isset($row['id'])){
-				  $this->ban(
-					  $input['channel'],
-					  $row['id'],
-					  $to,
-					  $reg[1]
-				  );
-			 }else{
-				 $this->sendBotPrivMessage($this->getVariabel("cid"), "/error ".sprintf($this->lang['nickNotFound'],$reg[1]));
-			 }
+
+             $userData = $this->protokol->getUserInChannel(
+                 $this->getVariabel("cid"),
+                 trim($reg[1])
+             );
+
+             if($userData !== false && is_array($userData)){
+                 $this->ban(
+                     $input['channel'],
+                     $userData['user_id'],
+                     $to,
+                     trim($reg[1])
+                 );
+             }else{
+                 $this->sendBotPrivMessage(
+                     $this->getVariabel("cid"),
+                     "/error ".sprintf($this->lang['nickNotFound'],$reg[1])
+                 );
+             }
 		 }else{
 			 $this->sendBotPrivMessage($this->getVariabel("cid"),"/error ".$this->lang['banBroken']);
 		 }
@@ -1098,6 +1124,15 @@
                     );
                 }
             }else{
+                //wee control if user try to change nick to his nick o.O
+                if(strtolower($this->protokol->user['nick']) == strtolower($reg[1])){
+                    $this->sendBotPrivMessage(
+                        $this->getVariabel("cid"),
+                        '/error '.sprintf($this->lang['nickIsYour'],$this->protokol->user['nick']),
+                        'red'
+                    );
+                    return;
+                }
                 $oldNick = $this->protokol->user['nick'];
                 mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."users` SET `nick`='".mysqli_escape_string(self::$mysql,$reg[1])."' WHERE `user_id`='".$this->protokol->user['user_id']."'");
                 $this->protokol->update_nick($reg[1]);
@@ -1154,6 +1189,10 @@
                     $data = $this->joinUser($channelName,$cData);
                     break;
                 }
+            }
+
+            if($is_found && $data === false){
+                return;//hmmm
             }
 
             if(!$is_found && $channel_data === null){
@@ -1221,11 +1260,16 @@
     }
     
     private function joinUser($channel,$data){
-        //vi skal nu se om vi har en ban :)
         if($data['ban'] == Yes){
             if(time() > $data['banTo']){
                 $data['ban'] = No;
-                $this->protokol->remove_ban($data['id']);
+                $this->protokol->remove_ban(
+                    $data['cid'],
+                    $data['uid'],
+                    $data['id']
+                );
+                $this->answer_join();
+                return false;//just for stop last run :)
             }else{
                 $this->sendBotPrivMessage(1,"/bannet ".$channel);
                 return false;
@@ -1374,12 +1418,14 @@
                 $this->get_base_part()."lib\\define.php",
                 $this->get_base_part()."lib\\db.php",
                 $this->get_base_part()."lib\\json.php",
+                $this->get_base_part()."lib\\protokol\\Protokol.php",
             );
         }else{
             $load = array(
                 'lib/define.php',
                 'lib/db.php',
-                'lib/json.php'
+                'lib/json.php',
+                'lib/protokol/Protokol.php',
             );
         }
 
@@ -1738,15 +1784,17 @@
 	 private function ban($channel,$uid,$to,$nick){
 		 $cid = $this->getCidFromChannel($channel,false);
 		 $this->sendBotPrivMessage(1,"/ban ".$channel,"red",$uid,0);
-		 mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."chat_member` SET `ban`='".Yes."', `banTo`='".(int)$to."' WHERE `uid`='".(int)$uid."' AND `cid`='".(int)$cid."'");
-         if($this->websocket){
+		 if($this->websocket){
              foreach($this->clientObj AS $clientID => $clientOBJ){
                  if($clientOBJ->isLogin && $clientOBJ->user['user_id'] == $uid){
                      $clientOBJ->ban($cid);
                  }
              }
+         }else{
+             mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."chat_member` SET `ban`='".Yes."', `banTo`='".(int)$to."' WHERE `uid`='".(int)$uid."' AND `cid`='".(int)$cid."'");
          }
 
+         $this->protokol->banUser($cid,$uid,$to);
 		 $this->sendBotMessage($cid,"/ban ".$nick,"red");
 	 }
     
@@ -1801,24 +1849,14 @@
 	 }
 	 
 	 private function iADMIN(){
-         if($this->websocket)
-             $level = $this->getVariabel("clinet")->user['user_level'];
-         else
-             $level = $this->user['user_level'];
-
-         if($level >= 102)
+         if($this->protokol->user['user_level'] >= 102)
              return true;
          else
              return false;
 	 }
 	 
 	 private function iSUPERADMIN(){
-         if($this->websocket)
-             $level = $this->getVariabel("client")->user['user_level'];
-         else
-             $level = $this->user['user_level'];
-
-         if($level == 103)
+         if($this->protokol->user['user_level'] == 103)
              return true;
          else
              return false;
@@ -1891,15 +1929,16 @@
          }
      }
 
-     function kick($cid){
+     function kick($cid,$isBan = false){
          if(!empty($this->channel[$cid])){
              unset($this->aktiv[$cid]);
-             unset($this->channel[$cid]);
+             if(!$isBan)
+                 unset($this->channel[$cid]);
          }
      }
 
      function ban($cid){
-         $this->kick($cid);
+         $this->kick($cid,true);
      }
 
      function socket_user_client($socket){
@@ -1972,7 +2011,9 @@
              return false;
          }
 
-
+         //vi kontrollere nu at brugeren ikke er bannet i denne channel :)
+         if(empty($this->channel[$msg['message'][0]['cid']]) || $this->channel[$msg['message'][0]['cid']]['ban'] == Yes)
+             return;
 
          $msg['message'][0]['message'] = htmlentities($msg['message'][0]['message']);
          $msg = json_encode($msg);

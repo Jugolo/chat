@@ -1,5 +1,5 @@
 <?php
-class Protokol{
+class Protokol implements ProtokolHead{
     public $use_session = true;
     public $protokol    = "Ajax";
     private $channel = array();
@@ -9,7 +9,7 @@ class Protokol{
     private $ignore = array();
     private $main;
 
-    function set_user_data($array){
+    function set_user_data($array,$ligegyldigt){
         $this->user = $array;
     }
 
@@ -93,7 +93,7 @@ class Protokol{
     }
 
 
-    function new_channel($name,$title = null){
+    function new_channel($name,$title = null,$isSystem = false){
         if($title === null){
             $title = $name;
         }
@@ -128,8 +128,11 @@ class Protokol{
         return $d;
     }
 
-    function remove_ban($id){
-        mysqli_query(self::$mysql,"DELETE FROM `".DB_PREFIX."chat_member` WHERE `id`='".$id."'");
+    function remove_ban($uid,$cid,$id){
+        mysqli_query(self::$mysql,"DELETE FROM `".DB_PREFIX."chat_member`
+        WHERE `uid`='".$uid."'
+        AND `cid`='".$cid."'");
+
         unset($this->my_channel[$id]);
     }
 

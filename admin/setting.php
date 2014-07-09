@@ -16,6 +16,15 @@ $isUpdate = false;
 if(isset($_POST['post'])){
 	//vi skal nu update post :)
 	$sql   = array();
+
+    if(empty($_POST['maxNickLength']) || !trim($_POST['maxNickLength'])){
+        $error[] = $locale['emptyMNL'];
+    }elseif(!isnum($_POST['maxNickLength'])){
+        $error[] = $locale['notIntMNL'];
+    }else{
+        $sql["maxNickLengt"] = cleanMySQL($_POST['maxNickLength']);
+    }
+
 	if(empty($_POST['startChannel']) || !trim($_POST['startChannel'])){
 		$error[] = $locale['emptyStartChannel'];
 	}elseif(!preg_match("/^#/",$_POST['startChannel'])){
@@ -106,6 +115,11 @@ if(count($error) != 0){
 	 echo "<th colspan='2' class='tbl' style='background-color:green'>".$locale['configUpdate']."</th>";
 	echo "</tr>";
 }
+
+ echo "<tr>";
+  echo "<th style='width:30px;' class='tbl'>".$locale['maxNickLanght']."</th>";
+  echo "<td style='width:70px;' class='tbl'><input type='number' name='maxNickLength' maxlength='255' class='textbox' style='width:100%;' value='".$config['maxNickLengt']."'></td>";
+ echo "</tr>";
  echo "<tr>";
   echo "<th style='width:30px' class='tbl'>".$locale['startChannel']."</th>";
   echo "<td style='width:70px' class='tbl'><input type='text' name='startChannel' maxlength='255' class='textbox' style='width:100%' value='".$config['startChannel']."'></td>";

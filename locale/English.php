@@ -3,15 +3,18 @@ $locale['chatTitle']   = "Chat";
 $locale['chatDec']     = "A chat to connect you member togeter!";
 $locale['errorGeaust'] = "You must be logged in to use the chat"; 
 
-$locale['startChannel'] = "Start channel";
-$locale['botUserName']  = "Bot name";
-$locale['botUserColor'] = "Bot user color";
-$locale['botTextColor'] = "Bot text color";
-$locale['inaktiv']      = "Time to inaktiv";
-$locale['leave']        = "Time to leave";
-$locale['useSocket']    = "Use WebSocket";
-$locale['submit']       = "Update config";
+$locale['maxNickLanght'] = "Max nick length";
+$locale['startChannel']  = "Start channel";
+$locale['botUserName']   = "Bot name";
+$locale['botUserColor']  = "Bot user color";
+$locale['botTextColor']  = "Bot text color";
+$locale['inaktiv']       = "Time to inaktiv";
+$locale['leave']         = "Time to leave";
+$locale['useSocket']     = "Use WebSocket";
+$locale['submit']        = "Update config";
 
+$locale['emptyMNL']           = "You must enter max nick length";
+$locale['notIntMNL']          = "Max nick length get not a numric value!";
 $locale['emptyStartChannel']  = "You must enter the starting channel";
 $locale['startChannelBroken'] = "Start channel must start with a #"; 
 $locale['emptyBotUserName']   = "You must enter bot name";
@@ -44,18 +47,6 @@ $locale['onBan']        = "%s banned %s";
 $locale['onUnBan']      = "%s got its ban removed";
 $locale['onInaktiv']    = "%s is now inactive";
 $locale['onNotInaktiv'] = "%s has returned";
-
-$locale['notSocket']         = "Socket is not enabled";
-$locale['notSocketMsg']      = "Socket is not enabled!. <br>To use this option you need to turn the socket and fill in all settings";
-$locale['notExec']           = "Missing exec enlargement.";
-$locale['notExecMsg']        = "Missing exec enlargement. <br> We can not open the WebSocket server without it!";
-$locale['openSocketTitle']   = "Open WebSocket";
-$locale['phpPath']           = "php.exe dir";
-$locale['socketPath']        = "Server dir";
-$locale['openSocket']        = "Open socket server now!";
-$locale['phppathMissing']    = "You must enter php path";
-$locale['serverpathMissing'] = "You must enter server path";
-$locale['socketError']       = "WebSocket error";
 
 $locale['Yes'] = "Yes";
 $locale['No']  = "No";

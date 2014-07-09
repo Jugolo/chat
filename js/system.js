@@ -567,7 +567,7 @@ var System = (function () {
             }
         }else{
             if(msg['uid'] == this.get_my_stat().id){
-                alert("Somting is broken!!!");
+                //alert("Somting is broken!!!");//kan ikke helt finde ud af hvad der er galt :(
             }
         }
     };

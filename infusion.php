@@ -42,7 +42,7 @@ $inf_newtable[2] = DB_CHATMEMBER."(
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `uid` int(11) NOT NULL,
   `cid` int(11) NOT NULL,
-  `lastActiv` int(11) NOT NULL,
+  `lastActiv` datetime NOT NULL,
   `isInAktiv` int(1) NOT NULL,
   `ban` int(11) NULL,
   `banTo` int(11) NULL,
@@ -87,8 +87,7 @@ $inf_insertdbrow[10] = DB_SETTINGS_INF." (settings_name, settings_value, setting
 $inf_insertdbrow[11] = DB_SETTINGS_INF." (settings_name, settings_value, settings_inf) VALUES('protokol','ajax','".$inf_folder."')";
 $inf_insertdbrow[12] = DB_SETTINGS_INF." (settings_name, settings_value, settings_inf) VALUES('socketServer','','".$inf_folder."')";
 $inf_insertdbrow[13] = DB_SETTINGS_INF." (settings_name, settings_value, settings_inf) VALUES('socketPort','','".$inf_folder."')";
-$inf_insertdbrow[14] = DB_SETTINGS_INF." (settings_name, settings_value, settings_inf) VALUES('flood','10','".$inf_folder."')";
-$inf_insertdbrow[15] = DB_SETTINGS_INF." (settings_name, settings_value, settings_inf) VALUES('maxNickLengt','10','".$inf_folder."')";
+$inf_insertdbrow[15] = DB_SETTINGS_INF." (settings_name, settings_value, settings_inf) VALUES('maxNickLengt','3','".$inf_folder."')";
 
 $inf_insertdbrow[16] = DB_CHATNAME." (`id`,`name`,`isPriv`,`uid`,`title`) VALUES('1','Bot','".No."','0','Channel to connect system and user togeter')";
 

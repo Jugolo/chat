@@ -1,5 +1,5 @@
 <?php
-class Protokol{
+class Protokol implements ProtokolHead{
     public $use_session = false;
     public $protokol    = "Socket";
     public $user        = array();
@@ -8,6 +8,7 @@ class Protokol{
     private $channel    = array();
     private $flood      = array();
     private $main       = null;
+    private $bannet     = array();
 
     public function Protokol($mysql,Server $server){
         $this->main = $server;
@@ -97,6 +98,8 @@ class Protokol{
             'setTitle' => 0,
         );
 
+        $this->bannet[$id] = array();
+
         return $this->channel[$id];
     }
 
@@ -106,19 +109,52 @@ class Protokol{
         }
     }
 
-    function get_flood(){
-        if(empty($this->flood[$this->user['user_id']]))
-            return array();
-        else
-            return $this->flood[$this->user['user_id']];
+    function get_flood($cid){
+        if(empty($this->flood[$this->user['user_id']])){
+            $this->flood[$this->user['user_id']] = array(
+                $cid => array(),
+            );
+        }
+
+        return $this->flood[$this->user['user_id']][$cid];
     }
 
-    function update_flood($flood){
-        $this->flood[$this->user['user_id']] = $flood;
+    function update_flood($flood,$cid){
+        $this->flood[$this->user['user_id']][$cid] = $flood;
     }
 
     function update_nick($newNick){
         $this->client[$this->user['user_id']]->user['nick'] = $newNick;
         $this->user['nick'] = $newNick;
+    }
+
+    function getUserInChannel($cid,$nick){
+        foreach($this->client AS $uid => $object){
+            if(strtolower($object->user['nick']) == strtolower($nick)){
+                foreach($object->channel AS $channelID => $data){
+                    if($channelID == $cid){
+                        return $object->user;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    function getBannetInChannel($cid){
+        return $this->bannet[$cid];
+    }
+
+    function banUser($cid,$uid,$banTo){
+        $this->bannet[$cid][] = $uid;
+        $this->client[$uid]->channel[$cid]['ban']   = Yes;
+        $this->client[$uid]->channel[$cid]['banTo'] = $banTo;
+    }
+
+    function remove_ban($uid,$cid,$id){
+        unset($this->client[$uid]->channel[$cid]);
+        $i = array_search($uid,$this->bannet[$cid]);
+        unset($this->bannet[$cid][$i]);
     }
 }
