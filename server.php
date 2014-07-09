@@ -99,50 +99,6 @@
          $this->add_socket_client($master);
 
          while($this->websocket){
-             //vi beder om client :)
-             foreach($this->client AS $socket){
-                 $konto = $this->get_client($socket);
-
-                 try{
-                     $konto->handle_inaktiv_or_leave_status(
-                         $this->getConfig("inaktiv"),
-                         $this->getConfig("leave")
-                     );
-                 }catch (Exception $e){
-                     switch($e->getMessage()){
-                         case 'inaktiv':
-                             $this->sendBotMessage(
-                                 $e->getCode(),
-                                 "/inaktiv ".$konto->user['nick'],
-                                 false,
-                                 $konto->user['user_id']
-                             );
-                         break;
-                         case 'leave':
-                             $this->sendBotMessage(
-                                 $e->getCode(),
-                                 '/leave',
-                                 false,
-                                 $konto->user['user_id']
-                             );
-                             $this->sendBotPrivMessage(
-                                 1,
-                                 "/leave ".$this->protokol->get_channel_by_id($e->getCode()),
-                                 "red",
-                                 $konto->user['user_id']
-                             );
-                             $this->kick(
-                                 $e->getCode(),
-                                 null,
-                                 $konto->user['user_id'],
-                                 false
-                             );
-
-                          break;
-                     }
-                 }
-             }
-
              $read = $this->client;
              $write = $ex = null;
 
@@ -597,14 +553,6 @@
     }
     
     private function updateActivInChannel(){
-        if($this->websocket){
-            //det er websocket ;)
-            /**
-             * @todo Update post for websocket ;)
-             */
-            return;
-        }
-
         $sql = mysqli_query(self::$mysql,"SELECT *
         FROM `".DB_PREFIX."chat_member`
         WHERE `uid`='".(int)$this->protokol->user['user_id']."'
@@ -969,6 +917,9 @@
 
         if($this->websocket){
             $this->remove_client($this->getVariabel("client")->socket);
+        }else{
+            mysqli_query(self::$mysql,"DELETE FROM `".DB_PREFIX."chat_member`
+            WHERE `uid`='".$this->protokol->user['user_id']."' AND `cid`!='1'");
         }
     }
     
@@ -1592,7 +1543,7 @@
             return false;
         }
 
-        $this->protokol->set_user_data($row);
+        $this->protokol->set_user_data($row,null);
         $this->user = $row;
         return true;
     }
@@ -1892,35 +1843,8 @@
      public  $aktiv       = array();
      public  $ignore      = array();
 
-     function update_post($cid){
-         $is_inaktiv = $this->aktiv[$cid]['isInaktiv'];
-         $this->aktiv[$cid] = array(
-             'time'      => time(),
-             'isInaktiv' => No
-         );
-
-         return ($is_inaktiv == Yes);
-     }
-
-     function handle_inaktiv_or_leave_status($inaktiv,$leave){
-         foreach($this->channel as $cid => $data){
-             if($cid == 1){
-                 continue;
-             }
-
-             if($leave != 0 && $data['lastActiv'] < strtotime("-".$leave." minutes")){
-                 unset($this->channel[$cid]);
-                 throw new Exception("leave",$cid);
-             }elseif($data['lastActiv'] < strtotime("-".$inaktiv." minutes") && $data['isInAktiv'] == No){
-                 $this->channel[$cid]['isInAktiv'] = Yes;
-                 throw new Exception("inaktiv",$cid);
-             }
-         }
-     }
-
      function kick($cid,$isBan = false){
          if(!empty($this->channel[$cid])){
-             unset($this->aktiv[$cid]);
              if(!$isBan)
                  unset($this->channel[$cid]);
          }

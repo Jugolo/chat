@@ -18,7 +18,7 @@ if(!defined("No")){
 // Infusion general information
 $inf_title = $locale['chatTitle'];
 $inf_description = $locale['chatDec'];
-$inf_version = "2.00";
+$inf_version = "0.0.1";
 $inf_developer = "Jugolo.dk";
 $inf_email = "";
 $inf_weburl = "http://jugolo.dk";
@@ -87,9 +87,9 @@ $inf_insertdbrow[10] = DB_SETTINGS_INF." (settings_name, settings_value, setting
 $inf_insertdbrow[11] = DB_SETTINGS_INF." (settings_name, settings_value, settings_inf) VALUES('protokol','ajax','".$inf_folder."')";
 $inf_insertdbrow[12] = DB_SETTINGS_INF." (settings_name, settings_value, settings_inf) VALUES('socketServer','','".$inf_folder."')";
 $inf_insertdbrow[13] = DB_SETTINGS_INF." (settings_name, settings_value, settings_inf) VALUES('socketPort','','".$inf_folder."')";
-$inf_insertdbrow[15] = DB_SETTINGS_INF." (settings_name, settings_value, settings_inf) VALUES('maxNickLengt','3','".$inf_folder."')";
+$inf_insertdbrow[14] = DB_SETTINGS_INF." (settings_name, settings_value, settings_inf) VALUES('maxNickLengt','8','".$inf_folder."')";
 
-$inf_insertdbrow[16] = DB_CHATNAME." (`id`,`name`,`isPriv`,`uid`,`title`) VALUES('1','Bot','".No."','0','Channel to connect system and user togeter')";
+$inf_insertdbrow[15] = DB_CHATNAME." (`id`,`name`,`isPriv`,`uid`,`title`) VALUES('1','Bot','".No."','0','Channel to connect system and user togeter')";
 
 
 $inf_droptable[1] = DB_CHATMESSAGE;
@@ -119,13 +119,6 @@ $inf_adminpanel[3] = array(
   'image'  => '',
   'panel'  => 'admin/log.php',
   'rights' => 'CHADLOG'
-);
-
-$inf_adminpanel[4] = array(
-	'title'  => 'Chat WebSocket',
-	'image'  => '',
-	'panel'  => 'admin/websocket.php',
-	'rights' => 'CHADSOCKET',
 );
 
 //i can not find other way to do this. if you have one so sey it :)

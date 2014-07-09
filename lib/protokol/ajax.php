@@ -4,7 +4,7 @@ class Protokol implements ProtokolHead{
     public $protokol    = "Ajax";
     private $channel = array();
     private $my_channel = array();
-    private $mysql;
+    private static $mysql;
     public $user = array();
     private $ignore = array();
     private $main;
@@ -34,7 +34,7 @@ class Protokol implements ProtokolHead{
 
     function get_ignore($only_cahce = true){
         if(!$only_cahce || empty($this->ignore)){
-            $sql = mysqli_query($this->mysql,"SELECT `ignore` FROM `".DB_PREFIX."chat_ignore` WHERE `uid`='".(int)$this->user['user_id']."'");
+            $sql = mysqli_query(self::$mysql,"SELECT `ignore` FROM `".DB_PREFIX."chat_ignore` WHERE `uid`='".(int)$this->user['user_id']."'");
             while($row = mysqli_fetch_array($sql)){
                 $this->ignore[] = $row['ignore'];
             }
@@ -44,13 +44,13 @@ class Protokol implements ProtokolHead{
     }
 
     function Protokol($mysql,Server $server){
-        $this->mysql = $mysql;
+        self::$mysql = $mysql;
         $this->main = $server;
     }
 
     function get_channel_list($onlye_cache = true){
         if(!$onlye_cache){
-            $sql = mysqli_query($this->mysql,"SELECT * FROM `".DB_PREFIX."chat_name`");
+            $sql = mysqli_query(self::$mysql,"SELECT * FROM `".DB_PREFIX."chat_name`");
             while($row = mysqli_fetch_array($sql)){
                 $data = $row;
                 unset($data['id']);
@@ -62,7 +62,7 @@ class Protokol implements ProtokolHead{
     }
 
     function add_to_channel($cid){
-        mysqli_query($this->mysql,"INSERT INTO `".DB_PREFIX."chat_member`
+        mysqli_query(self::$mysql,"INSERT INTO `".DB_PREFIX."chat_member`
          (`uid`,
          `cid`,
          `lastActiv`,
@@ -76,7 +76,7 @@ class Protokol implements ProtokolHead{
          '".No."'
          )");
 
-        $id = mysqli_insert_id($this->mysql);
+        $id = mysqli_insert_id(self::$mysql);
         $this->my_channel[$id] = array(
             'uid'       => $this->user['user_id'],
             'cid'       => $cid,
@@ -91,7 +91,7 @@ class Protokol implements ProtokolHead{
             return $this->my_channel;
         }
 
-        $sql = mysqli_query($this->mysql,"SELECT * FROM `".DB_PREFIX."chat_member` WHERE `uid`='".$this->user['user_id']."'");
+        $sql = mysqli_query(self::$mysql,"SELECT * FROM `".DB_PREFIX."chat_member` WHERE `uid`='".$this->user['user_id']."'");
         while($row = mysqli_fetch_array($sql)){
             $data = $row;
             unset($data['id']);
@@ -107,7 +107,7 @@ class Protokol implements ProtokolHead{
             $title = $name;
         }
 
-        mysqli_query($this->mysql,"INSERT INTO `".DB_PREFIX."chat_name`
+        mysqli_query(self::$mysql,"INSERT INTO `".DB_PREFIX."chat_name`
          (
          `name`,
          `isPriv`,
@@ -115,14 +115,14 @@ class Protokol implements ProtokolHead{
          `title`,
          `setTitle`
          ) VALUE (
-         '".mysqli_escape_string($this->mysql,$name)."',
+         '".mysqli_escape_string(self::$mysql,$name)."',
          '".No."',
          '0',
-         '".mysqli_escape_string($this->mysql,$title)."',
+         '".mysqli_escape_string(self::$mysql,$title)."',
          '".$this->user['user_id']."'
          )");
 
-        $id = mysqli_insert_id($this->mysql);
+        $id = mysqli_insert_id(self::$mysql);
         $this->channel[$id] = array(
             'name'     => $name,
             'isPriv'   => No,
@@ -142,7 +142,8 @@ class Protokol implements ProtokolHead{
         WHERE `uid`='".$uid."'
         AND `cid`='".$cid."'");
 
-        unset($this->my_channel[$id]);
+        if(empty($id) || $id === null)
+            $id = $this->getBanId($cid,$uid);
     }
 
     function get_flood($cid){
@@ -165,5 +166,65 @@ class Protokol implements ProtokolHead{
 
     function update_nick($newNick){
         $this->user['nick'] = $newNick;
+    }
+
+    function getBannetInChannel($cid){
+        $sql = mysqli_query(self::$mysql,"SELECT `uid` FROM `".DB_PREFIX."chat_member` WHERE `ban`='".Yes."'");
+        $bannet = array();
+        while($row = mysqli_fetch_array($sql)){
+            $bannet[] = $row['uid'];
+        }
+
+        return $bannet;
+    }
+
+    function banUser($cid,$uid,$banTo){
+        mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."` SET
+        `ban`='".Yes."',
+        `banTo`='".$banTo."'
+        WHERE `uid`='".$uid."' AND `cid`='".$cid."'");
+    }
+
+    function get_channel_by_id($id){
+        if(!empty($this->channel[$id])){
+            return $this->channel[$id]['name'];
+        }
+
+        return "Bot";
+    }
+
+    function getUserInChannel($cid,$nick){
+        $sql = mysqli_query(self::$mysql,"SELECT user.*
+        FROM `".DB_PREFIX."users` AS user
+        LEFT JOIN `".DB_PREFIX."chat_member` AS cm ON cm.uid = user.user_id
+        WHERE cm.cid='".(int)$cid."'
+        AND user.nick='".mysqli_real_escape_string(self::$mysql,$nick)."'");
+
+        $user = mysqli_fetch_array($sql);
+
+        if(empty($user))
+            return false;
+        else
+            return $user;
+    }
+
+    function getBanId($cid,$uid){
+        $sql = mysqli_query(self::$mysql,"SELECT `id`
+        FROM `".DB_PREFIX."chat_member`
+        WHERE `cid`='".$cid."'
+        AND `uid`='".$uid."'
+        AND `ban`='".Yes."'");
+        $data = mysqli_fetch_array($sql);
+
+        if(empty($data))
+            return null;
+        else
+            return $data;
+    }
+
+    function kick($cid,$uid){
+        mysqli_query(self::$mysql,"DELETE FROM `".DB_PREFIX."chat_member`
+        WHERE `cid`='".$cid."'
+        AND `uid`='".$uid."'");
     }
 }
