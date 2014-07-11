@@ -20,7 +20,7 @@ $inf_title = $locale['chatTitle'];
 $inf_description = $locale['chatDec'];
 $inf_version = "0.0.2";
 $inf_developer = "Jugolo.dk";
-$inf_email = "";
+$inf_email = "ronnie6-6@jubii.dk";
 $inf_weburl = "http://jugolo.dk";
 
 $inf_folder = "chat";
@@ -91,14 +91,20 @@ $inf_insertdbrow[14] = DB_SETTINGS_INF." (settings_name, settings_value, setting
 
 $inf_insertdbrow[15] = DB_CHATNAME." (`id`,`name`,`isPriv`,`uid`,`title`) VALUES('1','Bot','".No."','0','Channel to connect system and user togeter')";
 
+$inf_sitelink[1] = array(
+    'title' => 'Chat',
+    'url'   => 'chat.php?onDemand=what',
+    'visibility' => '0',
+);
 
 $inf_droptable[1] = DB_CHATMESSAGE;
 $inf_droptable[2] = DB_CHATMEMBER;
 $inf_droptable[3] = DB_CHATNAME;
 $inf_droptable[4] = DB_CHATUCONFIG;
+$inf_droptable[5] = DB_IGNOERE;
 
 $inf_deldbrow[1] = DB_SETTINGS_INF." WHERE settings_inf='".$inf_folder."'";
-$inf_deldbrow[2] = DB_ADMIN." WHERE admin_rights='CHAD' OR admin_rights='CHADBAN' OR admin_rights='CHADLOG' OR admin_rights='CHADSOCKET'";
+$inf_deldbrow[2] = DB_ADMIN." WHERE admin_rights='CHAD' OR admin_rights='CHADBAN' OR admin_rights='CHADLOG'";
 
 $inf_adminpanel[1] = array(
   'title'  => 'Chat setting',
