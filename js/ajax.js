@@ -100,8 +100,8 @@ var JAjax = (function () {
         if (typeof data['success'] != 'undefined') {
             var $this = this;
             this.object.onreadystatechange = function () {
-				if($this.object.readyState == 4 && $this.object.status == 200){
-					$this.handleAnswer($this.object.responseText);
+				if(this.readyState == 4 && this.status == 200){
+					$this.handleAnswer(this.responseText);
 				}
             };
         }

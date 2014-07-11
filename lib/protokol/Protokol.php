@@ -15,8 +15,11 @@ interface ProtokolHead{
     public function update_nick($newNick);
     public function getUserInChannel($cid,$nick);
     public function getBannetInChannel($cid);
-    public function banUser($cid,$uid,$banTo);
-    public function remove_ban($uid,$cid,$id);
+    public function banUser($cid,$uid,$banTo,$save = true);
+    public function remove_ban($uid,$cid,$id,$remove = true);
     public function getBanId($cid,$uid);
     public function kick($cid,$uid);
+    public function updateConfig($key,$value);
+    public function getConfig($key);
+    public function update();//happens evay time admin write /update
 }

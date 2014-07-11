@@ -1,0 +1,20 @@
+Version V.0.0.2
+New:
+adding danish languge
+Add lang data to bot message soo it translates to new languge
+server.php is not following users lang and not server lang.
+bot_message if cid is not found it will call trigger_error
+JSON header is now sent if is it AJAX call
+Handle ban in admin page for WebSockey (server is not updating data use /update)
+/clear use this if you want to delete all message in chat_message table. (it also delete all logs)
+
+Change:
+Now it get Lang befor config.
+clean up status changes
+
+Bugfix:
+If system languge not exists system take English.
+Chat languge is not updatet
+When loding the page. it will now auto selct the lang name in setting
+The text in main option is now fixed. (its is too big before ;))
+Status indikator not always work. fixed.

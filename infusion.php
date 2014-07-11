@@ -18,7 +18,7 @@ if(!defined("No")){
 // Infusion general information
 $inf_title = $locale['chatTitle'];
 $inf_description = $locale['chatDec'];
-$inf_version = "0.0.1";
+$inf_version = "0.0.2";
 $inf_developer = "Jugolo.dk";
 $inf_email = "";
 $inf_weburl = "http://jugolo.dk";

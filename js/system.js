@@ -16,6 +16,8 @@ var System = (function () {
     System.prototype.ping_send = {'command' : null, 'channel' : null};
     System.prototype.u_num = 0;
     System.prototype.channelCount = 0;//count number of channels :)
+    System.prototype.langName = null;
+    System.prototype.changeStatus = true;
 
     //config tag ;)
     System.prototype.valid_config = ['sound','textColor','lang','time'];
@@ -141,15 +143,12 @@ var System = (function () {
 
     System.prototype.handle_in_message = function (json,is_from_cache) {
         if (typeof json === "undefined" || typeof json.message === "undefined") {
-            this.get_object("status").error();
             return;
         }
 
         if(this.timer !== null){
             this.stop_chat();
         }
-
-        this.get_object("status").okay();
 
         for (var i = 0; i < json.message.length; i++) {
             var msg = json.message[i];
@@ -208,6 +207,11 @@ var System = (function () {
                 }
 
                 this.update_config();
+                this.new_ajax_query({
+                    'message' : '/join '+this.start_channel(),
+                    'channel' : 'Bot'
+                },'server.php?userBlock=' + this.data.browserBlock+'&sort='+this.data.user.sort+"&li=" + this.get_last_id());
+                this.open_chat();
             break;
             case 'profilImage':
                 var data = command.get_param();
@@ -231,10 +235,9 @@ var System = (function () {
 
                 //vi opretter nu forbindelse til en channel :)
                 this.new_ajax_query({
-                    'message' : '/join '+this.start_channel(),
+                    'message' : '/getConfig',
                     'channel' : 'Bot'
                 },'server.php?userBlock=' + this.data.browserBlock+'&sort='+this.data.user.sort+"&li=" + this.get_last_id());
-                this.open_chat();
             break;
             case 'updateConfig':
                 this.update_my_config(msg,command);
@@ -350,11 +353,16 @@ var System = (function () {
                     this.get_object("message").bot_message(this.convert_lang_string("onTitle",{
                         'title' : block[2],
                         'nick'  : this.data['systemBot'].name
-                    }), msg.id,"green");
+                    }), msg.id,"green","onTitle",{
+                        'title' : block[2],
+                        'nick'  : this.data['systemBot'].name
+                    });
                     this.getDom("title").context(block[2]);
                 }
             break;
             case 'error':
+                this.get_object("status").error();
+                this.changeStatus = false;
                 this.get_object("message").bot_message("Error: "+command.get_param()[2],msg.id,"red");
             break;
             case 'online':
@@ -375,7 +383,10 @@ var System = (function () {
                 this.get_object("message").bot_message(this.convert_lang_string("onNick",{
                     'oldNick' : old_nick,
                     'newNick' : msg.nick
-                }),msg.id,"green");
+                }),msg.id,"green","onNick",{
+                    'oldNick' : old_nick,
+                    'newNick' : msg.nick
+                });
 
                 //vi opdatere nu nick i online listen :)
                 this.getDom("option").run(function(){
@@ -391,19 +402,26 @@ var System = (function () {
             break;
             case 'kick':
                 var lang = null;
+                var langReplace = "";
                 if(/\/kick\s([a-zA-Z]*?)\s(.*)$/.test(msg['message'])){
                     var data = /^\/kick\s(.*?)$/.exec(msg['message']);
-                    lang = this.convert_lang_string('onOKickMsg',{
-                        'nick' : msg.nick,
-                        'msg'  : data[1]
-                    });
+                    langReplace = {
+                        'name' : 'onOKickMsg',
+                        'data' : {
+                            'nick' : msg.nick,
+                            'msg'  : data[1]
+                        }
+                    };
                 }else{
-                    lang = this.convert_lang_string("onOKick",{
-                        'nick' : msg.nick
-                    });
+                    langReplace = {
+                        'name' : 'onOKick',
+                        'data' : {
+                            'nick' : msg.nick
+                        }
+                    };
                 }
                 if(this.get_object("cache").remove_user_from_cache(this.trim(msg['uid']),this.trim(msg['channel']))){
-                    this.get_object("message").bot_message(lang,msg.id,"red");
+                    this.get_object("message").bot_message(this.convert_lang_string(langReplace['name'],langReplace['data']),msg.id,"red",langReplace['name'],langReplace['data']);
                     this.remove_user_from_online_list(msg['nick']);
                 }else{
                     alert("Error user "+msg['nick']+" not found!");
@@ -414,7 +432,10 @@ var System = (function () {
                     this.get_object("message").bot_message(this.convert_lang_string("onBan",{
                         'from' : msg['nick'],
                         'too'  : command.get_param()[2]
-                    }),msg['id'],"red");
+                    }),msg['id'],"red","onBan",{
+                        'from' : msg['nick'],
+                        'too'  : command.get_param()[2]
+                    });
                     this.remove_user_from_online_list(this.trim(command.get_param()[2]));
                 }else{
                     alert("Error no user found");
@@ -432,7 +453,9 @@ var System = (function () {
                 if(this.get_object("cache").remove_user_from_cache(this.trim(msg['uid']),this.trim(msg['channel']))){
                     this.get_object("message").bot_message(this.convert_lang_string('onExit',{
                         'nick' : msg['nick']
-                    },msg['id'],"red"));
+                    }),msg['id'],"red","onExit",{
+                        'nick' : msg['nick']
+                    });
                     this.remove_user_from_online_list(this.trim(msg['nick']));
                 }else{
                     //alert("Error no user found");
@@ -442,7 +465,9 @@ var System = (function () {
                 if(this.get_object("cache").remove_user_from_cache(this.trim(msg['uid']),this.trim(msg['channel']))){
                     this.get_object("message").bot_message(this.convert_lang_string('onLeave',{
                         'nick' : msg['nick']
-                    }),msg['id'],"red");
+                    }),msg['id'],"red","onLeave",{
+                        'nick' : msg['nick']
+                    });
                     this.remove_user_from_online_list(this.trim(msg['uid']));
                 }else{
                     alert("Error no user found");
@@ -451,7 +476,9 @@ var System = (function () {
             case 'unban':
                 this.get_object("message").bot_message(this.convert_lang_string('onUnban',{
                     'nick' : this.trim(command.get_param()[2])
-                }),msg['id'],'green');
+                }),msg['id'],'green', 'onUnban',{
+                    'nick' : this.trim(command.get_param()[2])
+                });
             break;
             case 'inaktiv':
                 this.getDom("user").run(function(){
@@ -463,12 +490,16 @@ var System = (function () {
                 //vi sender nu en besked om at brugeren er inaktiv :)
                 this.get_object("message").bot_message(this.convert_lang_string('onInaktiv',{
                     'nick' : command.get_param()[2]
-                }),msg['id'],'red');
+                }),msg['id'],'red','onInaktiv',{
+                    'nick' : command.get_param()[2]
+                });
             break;
             case 'notInaktiv':
                 this.get_object("message").bot_message(this.convert_lang_string("onNInaktiv",{
                     'nick' : command.get_param()[2]
-                }),msg["id"],'green');
+                }),msg["id"],'green','onNInaktiv',{
+                    'nick' : command.get_param()[2]
+                });
                 this.getDom("user").run(function(){
                    if(this.attr("uid") == msg['uid']){
                        this.getObject().getElementsByClassName("u_nick")[0].innerHTML = command.get_param()[2];
@@ -476,20 +507,24 @@ var System = (function () {
                 });
             break;
             case 'maxFlood':
-                this.get_object("message").bot_message(this.convert_lang_string("flood",{}),msg['id'],'red');
+                this.get_object("message").bot_message(this.convert_lang_string("flood",{}),msg['id'],'red','flood',{});
             break;
             case 'commandDenaid':
-                this.get_object("message").bot_message(this.get_lang().WrongCommand,msg['id'],'red');
+                this.get_object("message").bot_message(this.get_lang().WrongCommand,msg['id'],'red','WrongCommand',{});
             break;
             case 'ignore':
                 this.get_object("message").bot_message(this.convert_lang_string("onIgnore",{
                     'nick' : command.get_param()[2]
-                }), msg['id'],'green');
+                }), msg['id'],'green','onIgnore',{
+                    'nick' : command.get_param()[2]
+                });
             break;
             case 'unIgnore':
                 this.get_object("message").bot_message(this.convert_lang_string("onUnIgnore",{
                     'nick' : command.get_param()[2]
-                }),msg['id'],'green');
+                }),msg['id'],'green','onUnIgnore',{
+                    'nick' : command.get_param()[2]
+                });
             break;
             default:
             break;
@@ -513,13 +548,20 @@ var System = (function () {
                 this.user_config[conf[1]] = conf[2];
             break;
             case 'lang':
-                this.set_object("Lang",LibLang[conf[2]]);
+                var secondLang = "English";
+
+                if(this.langName !== null){
+                    secondLang = this.langName;
+                }
+
+                this.set_object("lang",this.setNewLang(conf[2],secondLang));
                 this.getDom("lang_select").getOptions(function(value,text){
-                    if(value == conf[2]){
+                    if(value == system.langName){
                         this.getObject().slected = true;
                     }
                 });
-                this.user_config[conf[1]] = conf[2];
+                this.user_config[conf[1]] = this.langName;
+                this.update_screen_lang();
             break;
             case 'time':
                 this.user_config.time_format = conf[2];
@@ -541,7 +583,7 @@ var System = (function () {
             //Kun for at være sikker!
             if(this.is_in_this_channel(msg.channel)){
                 this.add_user_in_user_list(msg['img'],msg['nick'],msg['uid']);
-                this.get_object("message").bot_message(this.convert_lang_string("onJoin",{'nick' : msg['nick']}),msg['id'],"green");
+                this.get_object("message").bot_message(this.convert_lang_string("onJoin",{'nick' : msg['nick']}),msg['id'],"green",'onJoin',{'nick' : msg['nick']});
             }
         }else if(this.get_object("cache").add_users(this.trim(msg['nick']),this.trim(msg['uid']),channel)){//channel er allerede trimmet
 
@@ -553,7 +595,7 @@ var System = (function () {
             if(start_stat.is_in){
                 this.add_user_in_user_list(msg['img'],msg['nick'],msg['uid']);
                 if(msg.cid != 1){//1 er en global channel som alle vigtige informationer bliver skrevet ind i. derfor gøre vi intet med den når det gælder at informere brugeren om det :D
-                    this.get_object("message").bot_message(this.convert_lang_string("onJoin",{'nick' : msg['nick']}),msg['id'],"green");
+                    this.get_object("message").bot_message(this.convert_lang_string("onJoin",{'nick' : msg['nick']}),msg['id'],"green",'onJoin',{'nick' : msg['nick']});
                 }
                 //alert("Yes");
             }else if(start_stat.is_i){
@@ -996,25 +1038,31 @@ var System = (function () {
     };
 
     System.prototype.new_ajax = function () {
-        this.get_object("status").call();
         var id = 0;
         if(this.ajax.length <= 50){
             id = this.ajax.length;
         }
+
+        this.get_object("status").call();
+
         this.ajax[id] = new JAjax({
             'action': 'server.php?userBlock=' + this.data.browserBlock+'&sort='+this.data.user.sort+"&li=" + this.get_last_id(),
             'method': 'get',
             'error': function (m) {
                 if(system.get_protokol() == "ajax"){
-                    system.get_object("message").bot_message(m,0);
+                    system.get_object("message").bot_message(m,0,"red");
                 }else{
-                    system.get_object("message").bot_message(system.get_lang().socket_open_fail, 0);
+                    system.get_object("message").bot_message(system.get_lang().socket_open_fail, 0,"red","socket_open_fail",{});
                 }
                 system.get_object("status").error();
             },
             'success': function (json) {
-                system.get_object("status").call();
                 system.handle_in_message(json,false);
+                if(system.changeStatus){
+                    system.get_object("status").okay();
+                }
+
+                system.changeStatus = true;
             },
             'protokol': this.get_protokol(),
             'host': this.data['socket']['server'],
@@ -1142,17 +1190,19 @@ var System = (function () {
 
         this.getDom("textbox").css("color",this.user_config['textColor']);
 
-        if(typeof LibLang[this.user_config['lang']] === "undefined"){
-            alert("Unknown lang: "+this.user_config['lang']);
-        }else{
-            this.set_object("lang",LibLang[this.user_config['lang']]);
-            this.update_screen_lang();
-            this.getDom("lang_select").getOptions(function(value,text,obj){
-                if(value == system.user_config['lang']){
-                    obj.selected = true;
-                }
-            });
+        var secondLang = "English";
+
+        if(this.langName !== null){
+            secondLang = this.langName;
         }
+
+        this.set_object("lang",this.setNewLang(this.user_config['lang'],secondLang));
+        this.update_screen_lang();
+        this.getDom("lang_select").getOptions(function(value,text,obj){
+            if(value == system.langName){
+                obj.selected = true;
+            }
+        });
 
         this.getDom("time").context(this.user_config['time']);
 
@@ -1231,14 +1281,12 @@ var System = (function () {
             this.stop_chat();
         }
 
-        this.get_object("status").okay();
         this.timer = setTimeout(function(){
             system.new_ajax_query(undefined,'server.php?userBlock=' + system.data.browserBlock+'&sort='+system.data.user.sort+"&li=" + system.get_last_id())
         },this.data.timer);
     };
 
     System.prototype.open_chat = function(){
-        this.get_object("status").okay();
         this.getDom("main").css("backgroundImage","none");
 
         this.getDom("option").run(function(){
@@ -1275,6 +1323,16 @@ var System = (function () {
 
         return false;
     };
+
+    System.prototype.setNewLang = function(MainLang,SecondLang){
+        var l = LibLang;
+        if(typeof l[MainLang] === "undefined"){
+            return this.setNewLang(SecondLang,"English");
+        }
+
+        this.langName = MainLang;
+        return l[MainLang];
+    }
 
     return System;
 

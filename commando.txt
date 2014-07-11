@@ -1,0 +1,8 @@
+/nick [a-zA-Z]. change you nick.
+/title .*? Change channels title
+/ban [user] ([message) () = not requiret ban user
+/unban [user] unban user
+/kick [user] ([message]) () = not requret kick user
+/join #([a-zA-Z]) join new channel
+/leave leave chat
+/update update chat

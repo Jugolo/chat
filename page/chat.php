@@ -86,7 +86,7 @@ echo "<div id='chatContainer'>
      <!-- User image is set here! -->
    </div>
    <div id='optionBar'>
-    <select id='option' onChange='system.selectOption(this)' class='textbox'>
+    <select id='option' onChange='system.selectOption(this)' class='textbox' style='padding:0;'>
 	 <option value='online' langString='OnlineList' langData='{}'></option>
 	 <option value='user' langString='setting' langData='{}'></option>
 	 <option value='smyile' langString='smylie' langData='{}'></option>
@@ -124,7 +124,7 @@ echo "<div id='chatContainer'>
 	 </tr>
 	 <tr class='sOne colorToo'>
 	  <th langTitle='timeEx' langData='{}'><span langString='time' langData='{}'></span></th>
-	  <td><input type='text' id='time' value='' onblur='system.clickConfig(\"time\",this.value)' class='textbox' style='width:100%'></td>
+	  <td><input type='text' id='time' value='' onblur='system.clickConfig(\"time\",this.value)' class='textbox' style='width:90%'></td>
 	 </tr>
 	</table>
    </div>

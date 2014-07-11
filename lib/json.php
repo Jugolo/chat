@@ -16,6 +16,9 @@ class Json{
     }
     
     static function show($exit = true){
+        if(!headers_sent())
+            header('Content-type: application/json');
+
         echo json_encode(self::$json);
 		if($exit){
 			exit;

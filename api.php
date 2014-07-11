@@ -30,8 +30,10 @@ function bot_message($cid,$message,$messageColor = 'black'){
             $channelsCache[] = $c[$i]['cid'];
     }
 
-    if(!in_array($cid,$channelsCache))
+    if(!in_array($cid,$channelsCache)){
+        trigger_error("[Jugolo Chat API] can not find channel whit id: ".$cid,E_USER_ERROR);
         return false;
+    }
 
     dbquery("INSERT INTO `".DB_PREFIX."chat_message` (
     `uid`,

@@ -4,6 +4,7 @@ class Protokol implements ProtokolHead{
     public $protokol    = "Socket";
     public $user        = array();
     private $client     = array();
+    private $mysql      = null;
 
     private $channel    = array();
     private $flood      = array();
@@ -12,6 +13,7 @@ class Protokol implements ProtokolHead{
 
     public function Protokol($mysql,Server $server){
         $this->main = $server;
+        $this->mysql = $mysql;
     }
 
     function get_channel_by_id($id){
@@ -129,7 +131,7 @@ class Protokol implements ProtokolHead{
     }
 
     function getUserInChannel($cid,$nick){
-        foreach($this->client AS $uid => $object){
+        foreach($this->client AS $object){
             if(strtolower($object->user['nick']) == strtolower($nick)){
                 foreach($object->channel AS $channelID => $data){
                     if($channelID == $cid){
@@ -143,19 +145,43 @@ class Protokol implements ProtokolHead{
     }
 
     function getBannetInChannel($cid){
+        if(empty($this->bannet[$cid]))
+            return array();
         return $this->bannet[$cid];
     }
 
-    function banUser($cid,$uid,$banTo){
+    function banUser($cid,$uid,$banTo,$save =true){
         $this->bannet[$cid][] = $uid;
         $this->client[$uid]->channel[$cid]['ban']   = Yes;
         $this->client[$uid]->channel[$cid]['banTo'] = $banTo;
+        if($save){
+            mysqli_query($this->mysql,"INSERT INTO `".DB_PREFIX."chat_member` (
+            `uid`,
+            `cid`,
+            `lastActiv`,
+            `isInAktiv`,
+            `ban`,
+            `banTo`
+            ) VALUES (
+            '".(int)$uid."',
+            '".(int)$cid."',
+            NOW(),
+            '".No."',
+            '".Yes."',
+            '".$banTo."'
+            )");
+        }
     }
 
-    function remove_ban($uid,$cid,$id){
+    function remove_ban($uid,$cid,$id,$remove = true){
         unset($this->client[$uid]->channel[$cid]);
         $i = array_search($uid,$this->bannet[$cid]);
         unset($this->bannet[$cid][$i]);
+        if($remove){
+            mysqli_query($this->mysql,"DELETE FROM `".DB_PREFIX."chat_member`
+        WHERE `uid`='".$uid."'
+        AND `cid`='".$cid."'");
+        }
     }
 
     function getBanId($c,$u){return null;}//this protokol dosent need this :)
@@ -167,5 +193,37 @@ class Protokol implements ProtokolHead{
 
         unset($this->client[$uid]->channel[$cid]);
         unset($this->client[$uid]->aktiv[$cid]);
+        return true;
+    }
+
+    function updateConfig($key,$value){
+        $this->client[$this->user['user_id']]->update_user_config($key,$value);
+    }
+
+    function getConfig($key){
+        $config = $this->client[$this->user['user_id']]->user_config;
+        if(empty($config[$key]))
+            return null;
+        else
+            return $config[$key];
+    }
+
+    function update(){
+        foreach($this->bannet as $cid => $data){
+            for($i=0;$i<count($data);$i++){
+                $this->remove_ban($data[$i],$cid,0,false);
+            }
+        }
+
+        $this->bannet = array();//protect against fail.
+        $sql = mysqli_query($this->mysql,"SELECT * FROM `".DB_PREFIX."chat_member` WHERE `id`<>'1' AND `ban`='".Yes."'");
+        while($row = mysqli_fetch_array($sql)){
+            $this->banUser(
+                $row['cid'],
+                $row['uid'],
+                $row['banTo'],
+                false
+            );
+        }
     }
 }

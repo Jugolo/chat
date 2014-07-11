@@ -2,7 +2,9 @@
 
 require_once "../../../maincore.php";
 require_once THEMES."templates/admin_header.php";
-require_once INFUSIONS."chat/locale/".str_replace("/",null,LOCALESET).".php";
+require_once INFUSIONS."chat/lib/client.php";
+
+loadLang(str_replace("/",null,LOCALESET),"English",$locale);
 require_once INFUSIONS."chat/lib/db.php";
 require_once INFUSIONS."chat/infusion_db.php";
 require_once INCLUDES."infusions_include.php";

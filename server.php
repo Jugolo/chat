@@ -7,6 +7,7 @@
      private $userConfig       = array();
      private $cid              = null;
 	 private $lang             = array();
+     private $langCache        = array();
 	 private $websocket        = false;
 	 private $client           = array();
 	 private $clientObj        = array();
@@ -120,6 +121,7 @@
 
                  if(!$konto->my_turn()){
                      $this->remove_client($socket);
+                     continue;
                  }
 
                  $recv = @socket_recv($socket,$buf,1024,0);
@@ -141,8 +143,10 @@
 
 
                  $this->variabel['client'] = $konto;
-                 if($konto->isLogin)
+                 if($konto->isLogin){
                      $this->protokol->turn($konto->user['user_id']);
+                     $this->setLang($this->protokol->getConfig("lang"));
+                 }
                  $this->re_cache_channel_id($this->postData['channel']);
                  $this->handlePost();
 
@@ -187,6 +191,7 @@
              exit("Handshake fail");
          }
          echo "New client connected to server\r\n";
+         return null;
 	 }
 	 
 	 private function remove_client($socket){
@@ -232,19 +237,36 @@
      }
 	 
 	 private function init_lang(){
+         $this->setLang($this->get_system_config("locale"));
+     }
+
+     function setLang($name){
+         if(!empty($this->langCache[$name]) && is_array($this->langCache[$name])){
+             $this->lang = $this->langCache[$name];
+             return;//super :)
+         }
          $locale = array();
+
          if($this->websocket)
-             $langUse = $this->get_base_part()."locale\\".str_replace("/",null,$this->get_system_config("locale"))."_server.php";
+             $langUse = $this->get_base_part()."locale\\".$name."_server.php";
          else
-             $langUse = "locale/".str_replace("/",null,$this->get_system_config("locale")."_server.php");
-		 if(file_exists($langUse)){
+             $langUse = "./locale/".$name."_server.php";
+
+
+         if(file_exists($langUse)){
 			 include $langUse;
-			 $this->lang = $locale;
+			 $this->lang = $this->langCache[$name] = $locale;
 		 }else{
-             if($this->websocket){
-                 exit("Include lang fail!. control you server settings!");
+             if(!empty($this->langCache['English']) && is_array($this->langCache['English'])){
+                 $this->lang = $this->langCache['English'];
+                 return;
              }
-			 Json::location("../../index.php");
+             if($this->websocket)
+                 $url =  $this->get_base_part()."locale\\English_server.php";
+             else
+                 $url = "./locale/English_server.php";
+             include $url;
+             $this->lang = $this->langCache['English'] = $locale;
 		 }
 	 }
 
@@ -448,7 +470,7 @@
         $my_channel = $this->protokol->get_my_channel_list();
 
         $found = false;
-        foreach($my_channel as $id => $data){
+        foreach($my_channel as $data){
             if($use != 1 && $use == $data['cid']){
                 $found = true;
                 break;
@@ -639,58 +661,64 @@
                 }
             break;
     		case "getStatus":
-    			return $this->answer_getStatus();
+    			$this->answer_getStatus();
     		break;
             case "join":
-                return $this->answer_join();
+                $this->answer_join();
     		break;
             case "nick":
-            	return $this->answer_nick();
+            	$this->answer_nick();
             break;
             case 'msg':
-            	return $this->answer_msg();
+            	$this->answer_msg();
             break;
             case "config":
-            	return $this->answer_config();
+            	$this->answer_config();
             break;
             case 'getOnline':
-            	return $this->do_getOnline();
+            	$this->do_getOnline();
             break;
             case 'title':
-            	return $this->doTitle();
+            	$this->doTitle();
             break;
             case 'exit':
-            	return $this->doExit();
+            	$this->doExit();
             break;
 			case 'getLang':
-			    return $this->answer_getLang();
+			    $this->answer_getLang();
 			break;
 			case 'leave':
-			    return $this->answer_leave();
+			    $this->answer_leave();
 			break;
 			case 'kick':
-				return $this->answer_kick();
+				$this->answer_kick();
 			break;
 			case 'bot':
-			     return $this->answer_bot();
+			    $this->answer_bot();
 			break;
 			case 'ban':
-			     return $this->answer_ban();
+			    $this->answer_ban();
 			break;
 			case 'unban':
-			     return $this->answer_unban();
+			    $this->answer_unban();
 			break;
             case 'ignore':
-                  return $this->answer_ignore();
+                $this->answer_ignore();
             break;
             case 'unIgnore':
-                  return $this->answer_uningore();
+                $this->answer_uningore();
             break;
             case 'ping':
                 $this->sendBotPrivMessage(1,"/pong","green");
             break;
             case 'update':
-                return $this->answer_update();
+                $this->answer_update();
+            break;
+            case 'getConfig':
+                $this->sendBotPrivMessage(1,"/config ".$this->getUserConfig());
+            break;
+            case 'clear':
+                $this->answer_clear();
             break;
             default:
             	$this->sendBotPrivMessage($this->getCidFromChannel($this->post("channel")), "/commandDenaid");
@@ -698,8 +726,24 @@
     	}
     }
 
+     private function answer_clear(){
+         if(!$this->iADMIN() && !$this->iSUPERADMIN()){
+             $this->sendBotPrivMessage(
+                 $this->getVariabel("cid"),
+                 "/error ".sprintf($this->lang['accessDenaidKommando'],"/clear")
+             );
+             return;
+         }
+
+         mysqli_query(self::$mysql,"DELETE FROM ".DB_PREFIX."chat_message");//on this method wee dont reseat id to 0 but only delete all items
+         $this->sendBotPrivMessage(
+             $this->getVariabel("cid"),
+             $this->lang['clearDone'],
+             'green'
+         );
+     }
+
      private function answer_update(){
-         $input = $this->init_get_data();
          if(!$this->iADMIN() && !$this->iSUPERADMIN()){
              //has nothing to do here idiot :()
              $this->sendBotPrivMessage($this->getVariabel("cid"), "/error ".sprintf($this->lang['accessDenaidKommando'],"/update"));
@@ -714,8 +758,10 @@
          $this->config = array();
          $this->loadDatabaseConfig();
 
+         $this->protokol->update();
+
          if($this->getConfig("protokol") != "socket" && $this->websocket){
-             exit("Server gooinh down!");
+             exit("Server gooing down!");
          }
 
          //okay now wee can tell user this system is now updatet :)
@@ -731,7 +777,8 @@
          if(preg_match("/^\/unIgnore\s([a-zA-Z]*?)$/",$input['message'],$reg)){
              if(($uid = $this->get_user_id_from_nick($reg[1])) !== false){
                  if(!in_array($uid,$this->protokol->get_ignore())){
-                     return $this->sendBotPrivMessage($this->getVariabel("cid"),"/error ".$this->lang['isNotIgnore']);
+                     $this->sendBotPrivMessage($this->getVariabel("cid"),"/error ".$this->lang['isNotIgnore']);
+                     return;
                  }
                  $this->protokol->remove_ignore($uid);
                  $this->sendBotPrivMessage($this->getVariabel("cid"),"/unIgnore ".$reg[1],"green");
@@ -748,7 +795,8 @@
          if(preg_match("/^\/ignore\s([a-zA-Z]*?)$/",$input['message'],$reg)){
              if(($uid = $this->get_user_id_from_nick($reg[1])) !== false){
                  if(in_array($uid,$this->protokol->get_ignore())){
-                   return $this->sendBotPrivMessage($this->getVariabel("cid"),"/error ".$this->lang['isIgnore'],"red");
+                     $this->sendBotPrivMessage($this->getVariabel("cid"),"/error ".$this->lang['isIgnore'],"red");
+                     return;
                  }
                  $this->sendBotPrivMessage($this->getVariabel("cid"),"/ignore ".$reg[1]);
                  $this->protokol->add_ignore($uid);
@@ -910,7 +958,7 @@
 
         foreach($this->protokol->get_my_channel_list() AS $cid => $data){
             $this->sendBotMessage(
-                $this->getVariabel("cid"),
+                 $cid,
                 "/exit"
             );
         }
@@ -957,19 +1005,18 @@
     private function answer_config(){
 		$input = $this->init_get_data();
     	if(preg_match("/^\/config\s\[(.*?)\]\[(.*?)\]$/", $input['message'],$reg)){
-            $isConfig = false;
     		switch(trim($reg[1])){
                 case 'time':
     			case 'sound':
                 case 'textColor':
                 case 'lang':
-			     	mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."chat_userConfig` SET `value`='".mysqli_escape_string(self::$mysql,$reg[2])."' WHERE `uid`='".(int)$this->protokol->user['user_id']."' AND `key`='".mysqli_escape_string(self::$mysql,$reg[1])."'");
-                    if(self::$mysql->error){
-                        exit(self::$mysql->error);
+
+                    $this->protokol->updateConfig($reg[1],$reg[2]);
+                    if(trim($reg[1]) == "lang"){
+                        //this is lang and it is importen wee update it so fast :D
+                        $this->setLang($reg[2]);
                     }
-                    if($this->websocket){
-                        $this->getVariabel("client")->update_user_config($reg[1],$reg[2]);
-                    }
+
     				$this->sendBotPrivMessage(
                         $this->getVariabel("cid"),
                         $this->lang['configUpdatet'],
@@ -1137,7 +1184,7 @@
             $my_chan  = $this->protokol->get_my_channel_list();
             $data = null;
 
-            foreach($my_chan AS $id => $cData){
+            foreach($my_chan AS $cData){
                 if($channel_data['id'] == $cData['cid'] && $cData['cid'] != 1){
                     $is_found = true;
                     $data = $this->joinUser($channelName,$cData);
@@ -1274,7 +1321,6 @@
     //getStatus
     private function answer_getStatus(){
         $this->sendBotPrivMessage(1,"/getStatus you are user");
-		$this->sendBotPrivMessage(1,"/config ".$this->getUserConfig());
 		$this->sendBotPrivMessage($this->getVariabel("cid"),"/profilImage ".$this->convert_image(
                 $this->protokol->user['user_avatar']
             ));
@@ -1403,6 +1449,7 @@
     private function userInit(){
 		$this->initUser();
 		$this->loadUserConfig();
+        $this->setLang($this->userConfig['lang']);
 		$this->variabel["cid"] = $this->post("channel") ? $this->getCidFromChannel($this->post("channel")) : 1;
     }
     
@@ -1428,7 +1475,7 @@
 
      private function get_nick_from_user_id($uid){
          if($this->websocket){
-             foreach($this->clientObj AS $clientID => $clientOBJ){
+             foreach($this->clientObj AS $clientOBJ){
                  if($clientOBJ->isLogin && $clientOBJ->user['user_id'] == $uid){
                      return $clientOBJ->user['nick'];
                  }
@@ -1436,6 +1483,7 @@
 
              return null;
          }
+         return null;
      }
     
     private function loadUserConfig(){
@@ -1467,21 +1515,8 @@
         $this->variabel['roomId']    = $this->get("roomId")    ? $this->get("roomId")    : null;
         $this->variabel['userBlock'] = $this->get("userBlock") ? $this->get("userBlock") : null;
         $this->variabel['isPost']    = $this->get("isPost")    ? true : false;
-        $this->variabel['userType']  = $this->get('userType')  ? $this->getUserType($this->get("userType")) : 0;
         $this->variabel['last_id']   = $this->get('li')        ? (int)$this->get('li') : 0;
     }
-    
-    //user sektion
-    
-    private function getUserType($typeGet){
-        if($typeGet == "user"){
-            $this->user['type'] = 1;
-        }else{
-             $this->user['type'] = 0;
-        }
-    }
-    
-    //Config sektion
     
     private function loadDatabaseConfig(){
         $sql = mysqli_query(self::$mysql,"SELECT * FROM `".DB_PREFIX."settings_inf` WHERE `settings_inf`='chat'");
@@ -1738,15 +1773,10 @@
 	 private function ban($channel,$uid,$to,$nick){
 		 $cid = $this->getCidFromChannel($channel,false);
 		 $this->sendBotPrivMessage(1,"/ban ".$channel,"red",$uid,0);
-		 if($this->websocket){
-             foreach($this->clientObj AS $clientID => $clientOBJ){
-                 if($clientOBJ->isLogin && $clientOBJ->user['user_id'] == $uid){
-                     $clientOBJ->ban($cid);
-                 }
-             }
-         }else{
-             mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."chat_member` SET `ban`='".Yes."', `banTo`='".(int)$to."' WHERE `uid`='".(int)$uid."' AND `cid`='".(int)$cid."'");
-         }
+
+         //Both Ajax and WebSocket need this (Websocket when admin write /update)
+         mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."chat_member` SET `ban`='".Yes."', `banTo`='".(int)$to."' WHERE `uid`='".(int)$uid."' AND `cid`='".(int)$cid."'");
+
 
          $this->protokol->banUser($cid,$uid,$to);
 		 $this->sendBotMessage($cid,"/ban ".$nick,"red");
@@ -1926,7 +1956,7 @@
 
          //vi kontrollere nu at brugeren ikke er bannet i denne channel :)
          if(empty($this->channel[$msg['message'][0]['cid']]) || $this->channel[$msg['message'][0]['cid']]['ban'] == Yes)
-             return;
+             return false;
 
          $msg['message'][0]['message'] = htmlentities($msg['message'][0]['message']);
          $msg = json_encode($msg);

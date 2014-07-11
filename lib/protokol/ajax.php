@@ -137,13 +137,10 @@ class Protokol implements ProtokolHead{
         return $d;
     }
 
-    function remove_ban($uid,$cid,$id){
+    function remove_ban($uid,$cid,$id,$r = true){
         mysqli_query(self::$mysql,"DELETE FROM `".DB_PREFIX."chat_member`
         WHERE `uid`='".$uid."'
         AND `cid`='".$cid."'");
-
-        if(empty($id) || $id === null)
-            $id = $this->getBanId($cid,$uid);
     }
 
     function get_flood($cid){
@@ -178,7 +175,7 @@ class Protokol implements ProtokolHead{
         return $bannet;
     }
 
-    function banUser($cid,$uid,$banTo){
+    function banUser($cid,$uid,$banTo,$save = true){
         mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."` SET
         `ban`='".Yes."',
         `banTo`='".$banTo."'
@@ -227,4 +224,11 @@ class Protokol implements ProtokolHead{
         WHERE `cid`='".$cid."'
         AND `uid`='".$uid."'");
     }
+
+    function updateConfig($key,$value){
+        mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."chat_userConfig` SET `value`='".mysqli_escape_string(self::$mysql,$value)."' WHERE `uid`='".(int)$this->user['user_id']."' AND `key`='".mysqli_escape_string(self::$mysql,$key)."'");
+    }
+
+    function getConfig($key){}//not in use. only for websocket (yey);
+    function update(){}//not in use
 }
