@@ -23,3 +23,4 @@ $locale['isNotIgnore'] = "Du ignorer ikke brugeren!";
 $locale['systemUpdatet'] = "Systemet er nu opdateret";
 $locale['nickIsYour'] = "Dit nick er allerede: %s";
 $locale['clearDone'] = "Besked tablen er nu tømt";
+$locale['banSelf']   = "Du kan ikke banne dig selv!";

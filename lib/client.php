@@ -102,7 +102,7 @@ function getStartChannel(){
 }
 
 function loadLang($main,$isNotFound,&$locale){
-    $dir = INFUSIONS."chat/locale/".$main.".php";
+    $dir = INFUSIONS."chat/locale/".$main."/client.php";
     if(!file_exists($dir)){
         loadLang($isNotFound,"English",$locale);
     }else{

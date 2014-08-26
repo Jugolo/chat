@@ -248,9 +248,9 @@
          $locale = array();
 
          if($this->websocket)
-             $langUse = $this->get_base_part()."locale\\".$name."_server.php";
+             $langUse = $this->get_base_part()."locale\\".$name."\\server.php";
          else
-             $langUse = "./locale/".$name."_server.php";
+             $langUse = "./locale/".$name."/server.php";
 
 
          if(file_exists($langUse)){
@@ -262,9 +262,9 @@
                  return;
              }
              if($this->websocket)
-                 $url =  $this->get_base_part()."locale\\English_server.php";
+                 $url =  $this->get_base_part()."locale\\English\\server.php";
              else
-                 $url = "./locale/English_server.php";
+                 $url = "./locale/English/server.php";
              include $url;
              $this->lang = $this->langCache['English'] = $locale;
 		 }
@@ -887,6 +887,15 @@
              );
 
              if($userData !== false && is_array($userData)){
+                 //you can not ban you self :)
+                 if($userData['user_id'] === $this->protokol->user['user_id']){
+                     $this->sendBotPrivMessage(
+                         $this->getVariabel("cid"),
+                         '/error '.$this->lang['banSelf']
+                     );
+                     return;
+                 }
+
                  $this->ban(
                      $input['channel'],
                      $userData['user_id'],

@@ -1,7 +1,7 @@
 <?php
 add_to_title($locale['global_200'].$locale['chatTitle']);
 add_to_head("<script type='text/javascript' src='js/system.js'></script>");
-add_to_head("<script type='text/javascript' src='js/lang.js'></script>");
+add_to_head("<script type='text/javascript' src='locale/lang.php'></script>");
 add_to_head("<script type='text/javascript' src='js/sound.js'></script>");
 add_to_head("<script type='text/javascript' src='js/j.js'></script>");
 add_to_head("<script type='text/javascript' src='js/status.js'></script>");
