@@ -1242,7 +1242,7 @@
                     return;
                 }else{
                     //brugeren er bannet :)
-                    if(!$this->allowJoinInBannetChannel($this->getVariabel("cid"))){
+                    if(!$this->allowJoinInBannetChannel($this->getCannelIDFromChannelName($channelName))){
                         $this->sendBotMessage(
                             1,
                             "/bannet ".$channelName,
@@ -1268,13 +1268,18 @@
 
      private function allowJoinInBannetChannel($cid){
          $sql = $this->database->query("SELECT * FROM `".DB_PREFIX."chat_member` WHERE `cid`='".(int)$cid."' AND `uid`='".$this->protokol->user['user_id']."'");
+
+         if($this->database->isError){
+             exit($this->database->getError());
+         }
+
          $result = $sql->get();
 
          if(time() > $result['banTo']){
              $this->protokol->remove_ban(
-                 $result['cid'],
                  $result['uid'],
-                 $result['id']
+                 $result['cid'],
+                 0
              );
              return true;
          }

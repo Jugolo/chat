@@ -152,8 +152,8 @@ class Protokol implements ProtokolHead{
 
     function remove_ban($uid,$cid,$id,$r = true){
         $this->database->query("DELETE FROM `".DB_PREFIX."chat_member`
-        WHERE `uid`='".$uid."'
-        AND `cid`='".$cid."'");
+        WHERE `uid`='".(int)$uid."'
+        AND `cid`='".(int)$cid."'");
     }
 
     function get_flood($cid){

@@ -1056,7 +1056,7 @@ var System = (function () {
         });
 
         //finely :)
-        return string.replace(new RegExp("(^|\s)#(\w*[a-zA-Z_]+\w*)",""),function(find){
+        return string.replace(new RegExp("(#[a-z0-9][a-z0-9\-_]*)","ig"),function(find){
            return "<span onclick='system.jsoin_channel_by_click(\""+find+"\")' style='cursor:pointer'>"+find+"</span>";
         });
     };
