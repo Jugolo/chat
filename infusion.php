@@ -18,7 +18,7 @@ if(!defined("No")){
 // Infusion general information
 $inf_title = $locale['chatTitle'];
 $inf_description = $locale['chatDec'];
-$inf_version = "0.0.2";
+$inf_version = "0.0.3";
 $inf_developer = "Jugolo.dk";
 $inf_email = "ronnie6-6@jubii.dk";
 $inf_weburl = "http://jugolo.dk";
@@ -73,6 +73,12 @@ $inf_newtable[5] = DB_IGNOERE."(
 `ignore` int(11) NOT NULL,
 PRIMARY KEY (`id`)
 ) ENGINE=MyISAM;";
+
+$inf_newtable[6] = DB_CHATFILE."(
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+   `name` varchar(255) NOT NULL,
+   `url` text NOT NULL
+) ENGINE=MyISAM";
 
 $inf_insertdbrow[1]  = DB_SETTINGS_INF." (settings_name, settings_value, settings_inf) VALUES('startChannel', '#Jugolo', '".$inf_folder."')";
 $inf_insertdbrow[2]  = DB_SETTINGS_INF." (settings_name, settings_value, settings_inf) VALUES('timer', '2500', '".$inf_folder."')";
