@@ -155,6 +155,19 @@
 }
 
 
+#uploadTable{
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#uploadTable th, #uploadTable td{
+    border: 1px solid black;
+    width: 50%;
+}
+
+#save{
+    cursor: pointer;
+}
 
 #text{
 
@@ -277,4 +290,54 @@
 
 .user_menu.table{
     width:100%;
+}
+
+
+.userDawnloadedImage img{
+ height: 15px;
+ width: 15px;
+}
+
+.userDawnloadedImage{
+    cursor: pointer;
+}
+
+#viewImage{
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    background-color: red;
+    border-radius: 10px;
+    display: none;
+    border: 2px solid black;
+}
+
+#viewImageTitle{
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    right: 0px;
+    height: 25px;
+    border-bottom: 1px solid black;
+    background-color: blue;
+    border-radius: 10px 10px 0 0;
+}
+
+#viewImageTitle img{
+    height: 20px;
+    width: 20px;
+    margin: 2.5px;
+    cursor: pointer;
+}
+
+#viewImages{
+    position: absolute;
+    top:25px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
 }

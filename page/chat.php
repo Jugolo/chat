@@ -52,6 +52,12 @@ var system = null;
    }
   });
   ".jugoloChatCLientAddSmylie()."
+
+ J('#save').onClick(function(){
+   system.uploadFilesClick();
+ });
+
+ system.showFileName();
  }
 </script>");
 
@@ -90,14 +96,14 @@ echo "<div id='chatContainer'>
 	 <option value='online' langString='OnlineList' langData='{}'></option>
 	 <option value='user' langString='setting' langData='{}'></option>
 	 <option value='smyile' langString='smylie' langData='{}'></option>
+	 <option value='upload' langString='upload' langData='{}'></option>
 	</select>
    </div>
-   <div class='option' what='online'>
-    Hej
-   </div>
-   <div class='option' what='smyile'>
-   
-   </div>
+
+   <div class='option' what='online'></div>
+
+   <div class='option' what='smyile'></div>
+
    <div class='option' what='user'>
     <table id='settingTable'>
 	 <caption langString='setting' langData='{}'></caption>
@@ -128,5 +134,32 @@ echo "<div id='chatContainer'>
 	 </tr>
 	</table>
    </div>
+
+   <div class='option' what='upload'>
+    <table id='uploadTable'>
+     <tr class='sOne colorOne'>
+      <th langString='uploadFiles' langData='{}'></th>
+      <td><img src='".IMAGES."php_save.png' id='save'> <span id='fileName'></span></td>
+     </tr>
+     <tr class='sOne colorToo'>
+      <td colspan='2'>
+       <input type='submit' style='width:100%' value='' langString='uploadNow' langData='{}' onclick='system.uploadFile();'>
+      </td>
+     </tr>
+    </table>
+   </div>
+
  </div>
-</div>";
+</div>
+
+<!--upload element ;) -->
+<div style='display:none'>
+ <input type='file' id='upload'>
+</div>
+
+<!--Image view area -->
+<div id='viewImage'>
+ <div id='viewImageTitle'><img src='".IMAGES."no.png' onclick='document.getElementById(\"viewImage\").style.display=\"none\";'></div>
+ <div id='viewImages'></div>
+</div>
+";

@@ -3,6 +3,10 @@ var Status = (function(){
         this.s = sy;
 	}
 
+    Status.prototype.updateSprog = function(s){
+        this.s = s;
+    };
+
     Status.prototype.call = function(){
         J("#statusIndikator").css("backgroundColor","#0066FF");
         J("#statusIndikator").getObject().title = this.s.onWork;

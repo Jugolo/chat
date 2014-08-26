@@ -14,7 +14,7 @@
 	 private $postData         = array();
 	 public static $message_id = 0;
      private $basepart         = null;
-     public static $mysql      = null;
+     private $database         = null;
      private $sConfig          = array();
      private $protokol         = null;
      private $channel          = array();
@@ -52,7 +52,7 @@
 		if($this->websocket){
 			$this->init_websocket();
 		}else{
-			if($this->getConfig("protokol") == "socket"){
+			if("socket" == $this->getConfig("protokol") && $this->getVariabel("isPm")){
 				exit("This is not ajax webserver but WebSocket server!");
 			}
 		}
@@ -306,7 +306,10 @@
             false,
             $row['uid']
         );
-    	mysqli_query(self::$mysql,"DELETE FROM `".DB_PREFIX."chat_member` WHERE `id`='".(int)$row['id']."'");
+        $this->database->query("DELETE FROM `".DB_PREFIX."chat_member` WHERE `id`='".(int)$row['id']."'");
+        if($this->database->isError){
+            exit($this->database->getError());
+        }
         $this->sendBotPrivMessage(
             1,
             "/leave ".$row['name'],
@@ -316,7 +319,11 @@
     }
     
     private function do_inaktiv($row){
-		mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."chat_member` SET `isInAktiv`='".Yes."' WHERE `id`='".$row['id']."'");
+		$this->database->query("UPDATE `".DB_PREFIX."chat_member` SET `isInAktiv`='".Yes."' WHERE `id`='".$row['id']."'");
+        if($this->database->isError){
+            exit($this->database->getError());
+        }
+
     	$this->sendBotMessage(
             $row['cid'],
             "/inaktiv ".$row['nick'],false,$row['uid']
@@ -325,14 +332,18 @@
     
     //message sektion
     private function showMessage(){
+        if($this->getVariabel("isPm")){
+            $this->getPMMessage();
+            return;
+        }
         //vi sletter nu pong beskeder som er mere end 1 min gammel :)
-        mysqli_query(self::$mysql,"DELETE FROM `".DB_PREFIX."chat_message` WHERE `cid`='1' AND `message`='/pong' AND DATE_SUB(time, INTERVAL 1 MINUTE) > NOW()");
-        if(self::$mysql->error){
-            exit(self::$mysql->error);
+        $this->database->query("DELETE FROM `".DB_PREFIX."chat_message` WHERE `cid`='1' AND `message`='/pong' AND DATE_SUB(time, INTERVAL 1 MINUTE) > NOW()");
+        if($this->database->isError){
+            exit($this->database->getError());
         }
 
         //big sql :D
-		$sql = mysqli_query(self::$mysql,"SELECT tm.id AS id, tm.message AS message, tm.isMsg AS isMsg, tm.msgTo AS msgTo, tm.messageColor AS messageColor, tm.isBot AS isBot, user.nick AS nick, tm.time AS time, tn.id AS cid, tn.name AS channel, cm.id AS cmid, user.user_id AS uid, user.user_avatar AS img, tn.isPriv AS isPriv, tn.uid AS privUid
+		$data = $this->database->query("SELECT tm.id AS id, tm.message AS message, tm.isMsg AS isMsg, tm.msgTo AS msgTo, tm.messageColor AS messageColor, tm.isBot AS isBot, user.nick AS nick, tm.time AS time, tn.id AS cid, tn.name AS channel, cm.id AS cmid, user.user_id AS uid, user.user_avatar AS img, tn.isPriv AS isPriv, tn.uid AS privUid
 		FROM ".DB_PREFIX."chat_message AS tm
 		LEFT JOIN ".DB_PREFIX."chat_member AS cm ON tm.cid = cm.cid
 		LEFT JOIN ".DB_PREFIX."users AS user ON user.user_id = tm.uid
@@ -342,12 +353,12 @@
 		AND cm.ban <> '".Yes."'
 		ORDER BY tm.id ASC ");
 
-        if(self::$mysql->error){
-            exit(self::$mysql->error);
+        if($this->database->isError){
+            exit($this->database->getError());
         }
 
     	$message = array();
-    	while($row = mysqli_fetch_array($sql)){
+    	while($row = $data->get()){
     		if($row['message'] == null){
     			continue;
     		}
@@ -360,7 +371,7 @@
     	
     	Json::addBlock("message", $message);
 
-        $sql = mysqli_query(self::$mysql,"SELECT cm.isInAktiv, cm.id, cm.uid , us.nick, cm.cid, cn.name
+        $data = $this->database->query("SELECT cm.isInAktiv, cm.id, cm.uid , us.nick, cm.cid, cn.name
         FROM `".DB_PREFIX."chat_member` AS cm
         LEFT JOIN `".DB_PREFIX."users` AS us ON us.user_id = cm.uid
         LEFT JOIN `".DB_PREFIX."chat_name` AS cn ON cn.id=cm.cid
@@ -374,7 +385,7 @@
            AND cm.isInAktiv = '".Yes."'"
         );
 
-        while($row = mysqli_fetch_array($sql))
+        while($row = $data->get())
             $this->handle_inaktiv($row);
     }
 
@@ -424,8 +435,10 @@
     }
     
     private function getUserIdFromNick($nick){
-    	$sql = mysqli_query(self::$mysql,"SELECT `user_id` FROM `".DB_PREFIX."users` WHERE BINARY `nick`='".mysqli_escape_string(self::$mysql,$nick)."'");
-    	$row = mysqli_fetch_array($sql);
+    	$data = $this->database->query("SELECT `user_id` FROM `".DB_PREFIX."users` WHERE BINARY `nick`='".mysqli_escape_string(self::$mysql,$nick)."'");
+        if($this->database->isError)
+            exit("Database error");
+    	$row = $data->get();
     	return (empty($row['user_id']) ? 0 : $row['user_id']);
     }
     
@@ -450,41 +463,17 @@
          return $this->cid;
      }
 
-    protected function getCidFromChannel($name,$cache=true){
-    	
-    	if($this->cid != null && $cache){
-    		return $this->cid;
-    	}
+    protected function getCidFromChannel($name){
 
-        $use = 1;//1 is bot channels :)
-
-        //vi skal nu finde ud af id fra name ;)
-        foreach($this->channel as $cid => $array){
-            if(trim($array['name']) == trim($name)){
-                $use = $cid;
-                break;//stop denne løkke :)
+        foreach($this->protokol->get_my_channel_list(false) as $data){
+            if($data['name'] == $name){
+                $this->variabel['cid'] = $this->cid = $data['cid'];
+                return $data['cid'];
             }
         }
 
-        //vi har nu cid nu skal vi bare have en alle mine channels
-        $my_channel = $this->protokol->get_my_channel_list();
-
-        $found = false;
-        foreach($my_channel as $data){
-            if($use != 1 && $use == $data['cid']){
-                $found = true;
-                break;
-            }
-        }
-
-        if(!$found)
-            $use = 1;
-
-        if($cache){
-            $this->variabel['cid'] = $this->cid = $use;
-        }
-
-        return $use;
+        $this->variabel['cid'] = $this->cid = 1;
+        return 1;
     }
     
     //post sektion
@@ -512,6 +501,7 @@
 
         //WebSocket has a problem. bannet user can write in the channel soo wee control it now :)
         if($this->getVariabel("cid") != 1 && in_array($this->protokol->user['user_id'],$this->protokol->getBannetInChannel($this->getVariabel("cid")))){
+            exit($this->getVariabel("cid")." -> ".$input['channel']);
             return;
         }
 
@@ -575,18 +565,18 @@
     }
     
     private function updateActivInChannel(){
-        $sql = mysqli_query(self::$mysql,"SELECT *
+        $data = $this->database->query("SELECT *
         FROM `".DB_PREFIX."chat_member`
         WHERE `uid`='".(int)$this->protokol->user['user_id']."'
         AND `cid`='".(int)$this->getVariabel("cid")."'");
 
-    	$row = mysqli_fetch_array($sql);
+    	$row = $data->get();
     	
     	if($row['isInAktiv'] == Yes){
 			$this->sendBotMessage($row['cid'], "/notInaktiv ".$this->protokol->user['nick'], 'green');
     	}
     	
-    	mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."chat_member` SET `lastActiv`= NOW(), `isInAktiv`='".No."' WHERE `cid`='".(int)$row['cid']."' AND `uid`='".$this->protokol->user['user_id']."'");
+    	$this->database->query("UPDATE `".DB_PREFIX."chat_member` SET `lastActiv`= NOW(), `isInAktiv`='".No."' WHERE `cid`='".(int)$row['cid']."' AND `uid`='".$this->protokol->user['user_id']."'");
     }
     
     private function handleMessage($data){
@@ -600,7 +590,7 @@
             $this->send_message_to_users($data['message']);
             return;//websocket sender direkte til brugerenerne så vi har ikke brug for denne del :)
         }
-    	mysqli_query(self::$mysql,"INSERT INTO `".DB_PREFIX."chat_message`
+    	$data = $this->database->prepare("INSERT INTO `".DB_PREFIX."chat_message`
             (
             `uid`,
             `cid`,
@@ -615,20 +605,26 @@
                 '".(int)$this->getVariabel("cid")."',
                 '".No."',
                 NOW(),
-                '".mysqli_escape_string(self::$mysql,$this->post("message"))."',
-                '".mysqli_escape_string(self::$mysql,$this->userConfig['textColor'])."',
+                {message},
+                {tx},
                 '".No."',
                 '0'
                 )");
+
+        $data->add("message",$this->post("message"));
+        $data->add("tx",$this->protokol->userConfig("textColor"));
+        $data->done();
     }
 
     private function get_user_id_from_nick($nick){
-        $sql = mysqli_query(self::$mysql,"SELECT `user_id` FROM `".DB_PREFIX."users` WHERE `nick`='".mysqli_escape_string(self::$mysql,$nick)."'");
-        if(self::$mysql->error){
-            exit(self::$mysql->error);
+        $data = $this->database->prepare("SELECT `user_id` FROM `".DB_PREFIX."users` WHERE `nick`={nick}");
+        $data->add("nick",$nick);
+        $result = $data->done();
+        if($this->database->isError){
+            exit("Database error");
         }
 
-        $row = mysqli_fetch_array($sql);
+        $row = $result->get();
 
         if(!empty($row['user_id']))
             return $row['user_id'];
@@ -720,11 +716,33 @@
             case 'clear':
                 $this->answer_clear();
             break;
+            case 'file':
+                $this->answer_file();
+            break;
             default:
             	$this->sendBotPrivMessage($this->getCidFromChannel($this->post("channel")), "/commandDenaid");
             break;
     	}
     }
+
+     private function answer_file(){
+         //findes filen?
+         $input = $this->init_get_data();
+         if(preg_match("/^\/file\s([0-9]*?)$/",$input['message'],$reg)){
+             $sql = $this->database->query("SELECT * FROM `".DB_PREFIX."chat_file` WHERE `id`='".(int)$reg[1]."'");
+             $row = $sql->get();
+             if(empty($row)){
+                 $this->sendBotPrivMessage($this->getVariabel("cid"),"/noFile");
+             }else{
+                 $this->sendBotMessage(
+                     $this->getVariabel("cid"),
+                     '/file '.$row['url']
+                 );
+             }
+         }else{
+             $this->sendBotPrivMessage($this->getVariabel("cid"), "/commandDenaid");
+         }
+     }
 
      private function answer_clear(){
          if(!$this->iADMIN() && !$this->iSUPERADMIN()){
@@ -735,7 +753,7 @@
              return;
          }
 
-         mysqli_query(self::$mysql,"DELETE FROM ".DB_PREFIX."chat_message");//on this method wee dont reseat id to 0 but only delete all items
+         $this->database->query("DELETE FROM ".DB_PREFIX."chat_message");//on this method wee dont reseat id to 0 but only delete all items
          $this->sendBotPrivMessage(
              $this->getVariabel("cid"),
              $this->lang['clearDone'],
@@ -861,7 +879,7 @@
 		 
 		 if(preg_match("/^\/ban\s([a-zA-Z]*?)\s([0-9]*?)$/",$input['message'],$reg)){
 			 //vi sætter nu tiden frem til den tidspunkt brugeren ikke længere er bannet ;)
-			 $to = strtotime("+".$reg[2]." minutes",time());
+			 $to = strtotime("+".(int)$reg[2]." minutes",time());
 
              $userData = $this->protokol->getUserInChannel(
                  $this->getVariabel("cid"),
@@ -908,9 +926,9 @@
 			 return;
 		 }
 		 
-		 mysqli_query(self::$mysql,"DELETE FROM `".DB_PREFIX."chat_member` WHERE `cid`='".(int)$this->getVariabel("cid")."' AND `uid`='".($this->websocket ? $this->getVariabel("client")->user['user_id'] : $this->user['user_id'])."'");
-         if(self::$mysql->error){
-             exit(self::$mysql->error);
+		 $this->database->query("DELETE FROM `".DB_PREFIX."chat_member` WHERE `cid`='".(int)$this->getVariabel("cid")."' AND `uid`='".($this->websocket ? $this->getVariabel("client")->user['user_id'] : $this->user['user_id'])."'");
+         if($this->database->isError){
+             exit($this->database->getError());
          }
 		 //vi skriver til channel at brugeren har forladt channel ;)
          $input = $this->init_get_data();
@@ -920,7 +938,12 @@
              unset($this->getVariabel("client")->aktiv[$this->getVariabel("cid")]);
          }
 
-         $this->sendBotMessage($this->getVariabel("cid"), "/leave ".$input['channel'],"red",($this->websocket ? $this->getVariabel("client")->user['user_id'] : $this->user['user_id']));
+         $this->sendBotMessage(
+             $this->getVariabel("cid"),
+             "/leave ".$input['channel'],
+             "red",
+             $this->protokol->user['user_id']
+         );
 	 }
 	 
     private function answer_kick(){
@@ -966,7 +989,7 @@
         if($this->websocket){
             $this->remove_client($this->getVariabel("client")->socket);
         }else{
-            mysqli_query(self::$mysql,"DELETE FROM `".DB_PREFIX."chat_member`
+            $this->database->query("DELETE FROM `".DB_PREFIX."chat_member`
             WHERE `uid`='".$this->protokol->user['user_id']."' AND `cid`!='1'");
         }
     }
@@ -982,7 +1005,14 @@
 		$input = $this->init_get_data();
 		
     	if(preg_match("/^\/title\s(.*?)$/",$input['message'],$reg)){
-			mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."chat_name` SET `title`='".mysqli_escape_string(self::$mysql,$reg[1])."', `setTitle`='".($this->websocket ? (int)$this->getVariabel("client")->user['user_id'] : (int)$this->user['user_id'])."' WHERE `id`='".(int)$this->getVariabel("cid")."'");
+			$sql = $this->database->prepare("UPDATE `".DB_PREFIX."chat_name`
+			SET `title`={title},
+			`setTitle`='".($this->websocket ? (int)$this->getVariabel("client")->user['user_id'] : (int)$this->user['user_id'])."'
+			WHERE `id`='".(int)$this->getVariabel("cid")."'");
+
+            $sql->add("title",$reg[1]);
+            $sql->done();
+
     		$this->sendBotMessage($this->getVariabel("cid"), $reg[0],"green");
     	}else{
     		$this->sendBotPrivMessage($this->getVariabel("cid"), "/error ".$this->lang['titleBroken']);
@@ -1045,8 +1075,9 @@
     	//vi deler stringen op ;)
     	if(preg_match("/^\/msg\s(.*?)\s(.*?)$/", $input['message'],$reg)){
     		//vi ser om vi kan finde en bruger med det nick ;)
-			$sql = mysqli_query(self::$mysql,"SELECT user_id AS id,`nick` FROM `".DB_PREFIX."users` WHERE `nick`='".mysqli_escape_string(self::$mysql,$reg[1])."'");
-    		$row = mysqli_fetch_array($sql);
+			$data = $this->database->prepare("SELECT user_id AS id,`nick` FROM `".DB_PREFIX."users` WHERE `nick`={nick}");
+            $data->add("nick",$reg[1]);
+    		$row = $data->done()->get();
     		if(!empty($row['id'])){
 				
 				if($this->websocket){
@@ -1077,7 +1108,7 @@
 					return;
 				}
 				
-				mysqli_query(self::$mysql,"INSERT INTO `".DB_PREFIX."chat_message`
+				$data = $this->database->prepare("INSERT INTO `".DB_PREFIX."chat_message`
             (
             `uid`,
             `cid`,
@@ -1092,11 +1123,14 @@
                 '".(int)$cid."',
                 '".No."',
                 NOW(),
-                '".mysqli_escape_string(self::$mysql,"/msg ".$this->user['nick']." -> ".$row['nick'].": ".$reg[2])."',
+                {message},
                 'yellow',
                 '".Yes."',
                 '".(int)$row['id']."'
                 )");
+
+                $data->add("message","/msg ".$this->protokol->user['nick']." -> ".$row['nick'].": ".$reg[2]);
+                $data->done();
     		}else{
     			$this->sendBotPrivMessage($cid, "/error ".sprintf($this->lang['noNick'], $reg[1]),"red");
     		}
@@ -1126,7 +1160,7 @@
                 }
             }else{
                 //wee control if user try to change nick to his nick o.O
-                if(strtolower($this->protokol->user['nick']) == strtolower($reg[1])){
+                if($this->protokol->user['nick'] == $reg[1]){
                     $this->sendBotPrivMessage(
                         $this->getVariabel("cid"),
                         '/error '.sprintf($this->lang['nickIsYour'],$this->protokol->user['nick']),
@@ -1135,7 +1169,9 @@
                     return;
                 }
                 $oldNick = $this->protokol->user['nick'];
-                mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."users` SET `nick`='".mysqli_escape_string(self::$mysql,$reg[1])."' WHERE `user_id`='".$this->protokol->user['user_id']."'");
+                $data = $this->database->prepare("UPDATE `".DB_PREFIX."users` SET `nick`={nick} WHERE `user_id`='".$this->protokol->user['user_id']."'");
+                $data->add("nick",$reg[1]);
+                $data->done();
                 $this->protokol->update_nick($reg[1]);
                 if($this->websocket){
                     foreach($this->getVariabel("client")->channel as $id => $name){
@@ -1146,8 +1182,8 @@
                         );
                     }
                 }else{
-                    $sql = mysqli_query(self::$mysql,"SELECT `cid` FROM `".DB_PREFIX."chat_member` WHERE `uid`='".$this->protokol->user['user_id']."' AND `cid`<>'1'");
-                    while($row = mysqli_fetch_array($sql)){
+                    $data = $this->database->query("SELECT `cid` FROM `".DB_PREFIX."chat_member` WHERE `uid`='".$this->protokol->user['user_id']."' AND `cid`<>'1'");
+                    while($row = $data->get()){
                         $this->sendBotMessage($row['cid'], "/nick ".$oldNick,"green");
                     }
                 }
@@ -1159,6 +1195,37 @@
     }
     
     //join
+
+     private function isMemberOfChannel($name){
+         foreach($this->protokol->get_my_channel_list(false) as $data){
+             if($data['name'] == $name){
+                 return true;
+             }
+         }
+
+         return false;
+     }
+
+     private function isChannelExists($name){
+         foreach($this->protokol->get_channel_list() as $cid => $data){
+             if($data['name'] == $name){
+                 return array_merge($data,array('id' => $cid));
+             }
+         }
+
+         return false;
+     }
+
+     private function getCannelIDFromChannelName($name){
+         foreach($this->protokol->get_channel_list() as $cid => $data){
+             if($data['name'] == $name){
+                 return $cid;
+             }
+         }
+
+         return 1;
+     }
+
     private function answer_join(){
 		$input = $this->init_get_data();
     	if(preg_match("/^\/join #([a-zA-Z0-9]*?)$/", $input['message'], $reg)){
@@ -1168,56 +1235,52 @@
 			}
     		$channelName = "#".$reg[1];
 
-            //okay vi finder nu channel :)
-            $channel_data = null;
-
-            foreach($this->channel AS $cid => $data){
-                if($data['name'] == $channelName){
-                    $data['id'] = $cid;
-                    $channel_data = $data;
-                    break;
+            if($this->isMemberOfChannel($channelName)){
+                //vi skal nu se om vi er bannet :)
+                if(!in_array($this->protokol->user['user_id'],$this->protokol->getBannetInChannel($this->getCannelIDFromChannelName($channelName)))){
+                    $this->sendBotPrivMessage($this->getVariabel("cid"),"/error ".sprintf($this->lang['isMember'],$channelName));
+                    return;
+                }else{
+                    //brugeren er bannet :)
+                    if(!$this->allowJoinInBannetChannel($this->getVariabel("cid"))){
+                        $this->sendBotMessage(
+                            1,
+                            "/bannet ".$channelName,
+                            "red"
+                        );
+                        return;
+                    }
                 }
             }
 
-            //vi skal nu se om vi kan finde brugeren i channel :)
-            $is_found = false;
-            $my_chan  = $this->protokol->get_my_channel_list();
-            $data = null;
-
-            foreach($my_chan AS $cData){
-                if($channel_data['id'] == $cData['cid'] && $cData['cid'] != 1){
-                    $is_found = true;
-                    $data = $this->joinUser($channelName,$cData);
-                    break;
-                }
-            }
-
-            if($is_found && $data === false){
-                return;//hmmm
-            }
-
-            if(!$is_found && $channel_data === null){
-                $data = $this->joinUserInNewChannel($channelName);
-                $channel_data = $data;
-            }elseif($channel_data !== null && $channel_data['id'] != 1 && empty($data)){
-                //vi har channel men brugeren er ikke inde i den ;) derfor skal vi nu smide brugeren der ind :D
-                $data = $this->join_user_in_channel($channel_data);
+            if($data = $this->isChannelExists($channelName)){
+                $this->join_user_in_channel($data);
             }else{
-                $this->sendBotPrivMessage($this->getVariabel("cid"),"/error ".sprintf($this->lang['isMember'],$channelName));
-
-                return;
+               $data =  $this->joinUserInNewChannel($channelName);
             }
 
-            if($data === false){
-                return;
-            }
-
-    		$this->sendBotPrivMessage((int)$channel_data['id'], "/title ".$data['title'],"green",null,0);
+    		$this->sendBotPrivMessage((int)$data['id'], "/title ".$data['title'],"green",null,0);
     		
     	}else{
 			$this->sendBotPrivMessage($this->getVariabel("cid"),"/error ".$this->lang['invalidJoin']);
     	}
     }
+
+     private function allowJoinInBannetChannel($cid){
+         $sql = $this->database->query("SELECT * FROM `".DB_PREFIX."chat_member` WHERE `cid`='".(int)$cid."' AND `uid`='".$this->protokol->user['user_id']."'");
+         $result = $sql->get();
+
+         if(time() > $result['banTo']){
+             $this->protokol->remove_ban(
+                 $result['cid'],
+                 $result['uid'],
+                 $result['id']
+             );
+             return true;
+         }
+
+         return false;
+     }
 
      private function join_user_in_channel($data){
          $this->protokol->add_to_channel($data['id']);
@@ -1260,29 +1323,6 @@
     	return $data;
     }
     
-    private function joinUser($channel,$data){
-        if($data['ban'] == Yes){
-            if(time() > $data['banTo']){
-                $data['ban'] = No;
-                $this->protokol->remove_ban(
-                    $data['cid'],
-                    $data['uid'],
-                    $data['id']
-                );
-                $this->answer_join();
-                return false;//just for stop last run :)
-            }else{
-                $this->sendBotPrivMessage(1,"/bannet ".$channel);
-                return false;
-            }
-        }
-
-        $this->sendBotMessage($data['cid'],"/join","green");
-        $this->sendBotPrivMessage(1,"/join ".$channel);
-
-        return $data;
-    }
-    
     private function getOnline($id,$isCommand = false){
 		$name = array();
 		if($this->websocket){
@@ -1302,12 +1342,12 @@
 				}
 			}
 		}else{
-		$sql = mysqli_query(self::$mysql,"SELECT user.nick AS nick, user.user_id AS id, user.user_avatar AS img, cm.isInAktiv AS isInAktiv
+		$data = $this->database->query("SELECT user.nick AS nick, user.user_id AS id, user.user_avatar AS img, cm.isInAktiv AS isInAktiv
 		FROM ".DB_PREFIX."users AS user
 		LEFT JOIN ".DB_PREFIX."chat_member AS cm ON user.user_id = cm.uid
 		WHERE cm.cid='".(int)$id."' AND cm.ban <> '".Yes."'");
     	
-    	while($row = mysqli_fetch_array($sql)){
+    	while($row = $data->get()){
     		if($isCommand){
     			$name[] = $row['id']."|".$row['nick']."|".$this->convert_image($row['img'])."|".$row['isInAktiv'];
     		}else{
@@ -1329,8 +1369,9 @@
     //nick control
     
     private function nickKontrol($nick){
-		$sql = mysqli_query(self::$mysql,"SELECT `user_id` FROM `".DB_PREFIX."users` WHERE `user_name`='".mysqli_escape_string(self::$mysql,$nick)."' AND `user_id`!='".$this->protokol->user['user_id']."' OR `nick`='".mysqli_escape_string(self::$mysql,$nick)."' AND `user_id`!='".$this->protokol->user['user_id']."'");
-    	$row = mysqli_fetch_array($sql);
+		$data = $this->database->prepare("SELECT `user_id` FROM `".DB_PREFIX."users` WHERE `user_name`={nick} AND `user_id`!='".$this->protokol->user['user_id']."' OR `nick`={nick} AND `user_id`!='".$this->protokol->user['user_id']."'");
+        $data->add("nick",$nick);
+        $row = $data->done()->get();
     	return (empty($row['user_id']) ? true : false);
     }
     
@@ -1338,11 +1379,11 @@
     private function getUserConfig(){
     	$return = array();
 		
-		$sql = mysqli_query(self::$mysql,"SELECT *
+		$data = $this->database->query("SELECT *
 		FROM `".DB_PREFIX."chat_userConfig`
 		WHERE `uid`='".$this->protokol->user['user_id']."'");
 
-    	while($row = mysqli_fetch_array($sql)){
+    	while($row = $data->get()){
     		$return[] = $row['key']."=".$row['value'];
     	}
     	
@@ -1379,12 +1420,12 @@
          }else{
              include ("lib/protokol/ajax.php");
          }
-         $this->protokol = new Protokol(self::$mysql,$this);
+         $this->protokol = new Protokol($this->database,$this);
      }
 
      private function init_system_setting(){
-         $sql = mysqli_query(self::$mysql,"SELECT * FROM `".DB_PREFIX."settings"."`");
-         while($row = mysqli_fetch_array($sql)){
+         $data = $this->database->query("SELECT * FROM `".DB_PREFIX."settings"."`");
+         while($row = $data->get()){
              $this->sConfig[$row['settings_name']] = $row['settings_value'];
          }
      }
@@ -1398,18 +1439,16 @@
      }
 
      private function init_db(){
-         $mysqli = new mysqli(
+         $this->database = new DatabaseHandler(
              $this->getVariabel("db_host"),
              $this->getVariabel("db_user"),
              $this->getVariabel("db_pass"),
              $this->getVariabel("db_data")
          );
 
-         if($mysqli->connect_errno){
-             exit($mysqli->connect_error);
+         if($this->database->isError){
+             exit("MySQLI startup error");
          }
-
-         self::$mysql = $mysqli;
      }
     
     private function loadPages(){
@@ -1419,6 +1458,7 @@
                 $this->get_base_part()."lib\\db.php",
                 $this->get_base_part()."lib\\json.php",
                 $this->get_base_part()."lib\\protokol\\Protokol.php",
+                $this->get_base_part()."lib\\db\\mysqli.php"
             );
         }else{
             $load = array(
@@ -1426,6 +1466,7 @@
                 'lib/db.php',
                 'lib/json.php',
                 'lib/protokol/Protokol.php',
+                'lib/db/mysqli.php'
             );
         }
 
@@ -1464,10 +1505,8 @@
 	 }
 	 
     private function initUser(){
-		if($this->getVariabel("userBlock") == $this->getSessionId()){
-			if(!$this->login()){
-                exit("Unknown user");
-            }
+		if($this->login()){
+           //do nothing :)
 		}else{
 			Json::location("../../index.php?error=session");
         }
@@ -1487,8 +1526,8 @@
      }
     
     private function loadUserConfig(){
-		$sql = mysqli_query(self::$mysql,"SELECT * FROM `".DB_PREFIX."chat_userConfig` WHERE `uid`='".($this->websocket ? $this->getVariabel("client")->user['id'] : $this->user['user_id'])."'");
-        while($row = mysqli_fetch_array($sql)){
+        $sql = $this->database->query("SELECT * FROM `".DB_PREFIX."chat_userConfig` WHERE `uid`='".($this->websocket ? $this->getVariabel("client")->user['id'] : $this->user['user_id'])."'");
+        while($row = $sql->get()){
             $this->userConfig[$row['key']] = $row['value'];
         }
     }
@@ -1513,14 +1552,13 @@
     
     private function loadVariabel(){
         $this->variabel['roomId']    = $this->get("roomId")    ? $this->get("roomId")    : null;
-        $this->variabel['userBlock'] = $this->get("userBlock") ? $this->get("userBlock") : null;
         $this->variabel['isPost']    = $this->get("isPost")    ? true : false;
         $this->variabel['last_id']   = $this->get('li')        ? (int)$this->get('li') : 0;
     }
     
     private function loadDatabaseConfig(){
-        $sql = mysqli_query(self::$mysql,"SELECT * FROM `".DB_PREFIX."settings_inf` WHERE `settings_inf`='chat'");
-        while($row = mysqli_fetch_array($sql)){
+        $data = $this->database->query("SELECT * FROM `".DB_PREFIX."settings_inf` WHERE `settings_inf`='chat'");
+        while($row = $data->get()){
             $this->config[$row['settings_name']] = $row['settings_value'];
         }
     }
@@ -1555,26 +1593,22 @@
         if(empty($_COOKIE[COOKIE_PREFIX."user"])){
            return false;
         }
-        $ip = $this->ip();
+
         $ucd = explode(".",$_COOKIE[COOKIE_PREFIX."user"]);
 
-
-
-
-        $sql = mysqli_query(self::$mysql,"SELECT * FROM `".DB_PREFIX."users` WHERE
+        $row = $this->database->query("SELECT * FROM `".DB_PREFIX."users` WHERE
         `user_id`='".(empty($ucd[0]) ? '0' : (int)$ucd[0])."'
         AND `user_status`='0'
-        AND `user_actiontime`='0'");
-        if(self::$mysql->error){
-            exit(self::$mysql->error);
+        AND `user_actiontime`='0'")->get();
+        if($this->database->isError){
+            exit("Database error");
         }
-        $row = mysqli_fetch_array($sql);
 
         if(empty($row)){
             return false;
         }
 
-        if($row['user_ip'] != $ip){
+        if($row['user_ip'] != $this->ip()){
             return false;
         }
 
@@ -1691,7 +1725,7 @@
                 $color = $this->getConfig("botTextColor");
             }
 
-		    mysqli_query(self::$mysql,"INSERT INTO `".DB_PREFIX."chat_message`
+		    $data = $this->database->prepare("INSERT INTO `".DB_PREFIX."chat_message`
             (
             `uid`,
             `cid`,
@@ -1706,11 +1740,15 @@
                 '".(int)$cid."',
                 '".Yes."',
                 NOW(),
-                '".mysqli_escape_string(self::$mysql,$message)."',
-                '".mysqli_escape_string(self::$mysql,$color)."',
+                {message},
+                {color},
                 '".No."',
                 '0'
                 )");
+
+        $data->add("message",$message);
+        $data->add("color",$color);
+        $data->done();
     }
     
     private function sendBotPrivMessage($cid,$message,$color = false,$uid=null,$my=null){
@@ -1744,7 +1782,7 @@
 			return;
 		}
 		
-    	    mysqli_query(self::$mysql,"INSERT INTO `".DB_PREFIX."chat_message`
+    	    $data = $this->database->prepare("INSERT INTO `".DB_PREFIX."chat_message`
             (
             `uid`,
             `cid`,
@@ -1759,15 +1797,18 @@
                 '".(int)$cid."',
                 '".Yes."',
                 NOW(),
-                '".mysqli_escape_string(self::$mysql,$message)."',
-                '".mysqli_escape_string(self::$mysql,($color ? $color : 'yellow'))."',
+                {message},
+                {color},
                 '".Yes."',
                 '".(int)($uid === null ? $this->user['user_id'] : $uid)."'
                 )");
 
-        if(self::$mysql->error){
-            exit(self::$mysql->error);
-        }
+        $data->add("message",$message);
+        $data->add("color",($color ? $color : 'yellow'));
+        $data->done();
+
+        if($this->database->isError)
+            exit($this->database->getError());
     }
 	 
 	 private function ban($channel,$uid,$to,$nick){
@@ -1775,7 +1816,7 @@
 		 $this->sendBotPrivMessage(1,"/ban ".$channel,"red",$uid,0);
 
          //Both Ajax and WebSocket need this (Websocket when admin write /update)
-         mysqli_query(self::$mysql,"UPDATE `".DB_PREFIX."chat_member` SET `ban`='".Yes."', `banTo`='".(int)$to."' WHERE `uid`='".(int)$uid."' AND `cid`='".(int)$cid."'");
+         $this->database->query("UPDATE `".DB_PREFIX."chat_member` SET `ban`='".Yes."', `banTo`='".(int)$to."' WHERE `uid`='".(int)$uid."' AND `cid`='".(int)$cid."'");
 
 
          $this->protokol->banUser($cid,$uid,$to);

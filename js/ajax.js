@@ -1,8 +1,7 @@
 var JAjax = (function () {
 	
 	this.data = null;
-	this.obj  = null;
-    this.isOpen = false;
+	this.isOpen = false;
 	
     function JAjax(data) {
         this.initAjax();
@@ -12,8 +11,10 @@ var JAjax = (function () {
         }
 		
 		this.data = data;
-        
     }
+
+    JAjax.prototype.headers = {'Content-type' : 'application/x-www-form-urlencoded'};
+    JAjax.obj  = null;
 	
 	JAjax.prototype.changePost = function(post){
 		this.data.send = post;
@@ -42,7 +43,6 @@ var JAjax = (function () {
 
     JAjax.prototype.get_cookie = function(){
         var cookie_string = document.cookie;
-        console.log(cookie_string);
         return cookie_string;
     };
 	
@@ -77,6 +77,10 @@ var JAjax = (function () {
 		var jsons = JSON.stringify(message);
         this.obj.send(jsons);
 	};
+
+    JAjax.prototype.unsetHeader = function(){
+
+    };
 	
     JAjax.prototype.doAction = function (data) {
         if (data['method'].toLowerCase() == 'post') {
@@ -86,9 +90,19 @@ var JAjax = (function () {
 				data.error(e.message);
 				return;
 			}
-            this.object.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+
+            if(data['noHeader'] === false){
+                for(var tag in this.headers){
+                    this.object.setRequestHeader(tag,this.headers[tag]);
+                }
+            }
+
             if (typeof data['send'] != 'undefined') {
-                this.object.send(this.initSend(data['send']));
+                if(data['file'] === true){
+                    this.object.send(data['send']);
+                }else{
+                    this.object.send(this.initSend(data['send']));
+                }
             } else {
                 this.object.send();
             }

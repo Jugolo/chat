@@ -1,7 +1,7 @@
 var system = null;
 var System = (function () {
 
-    System.prototype.option_name = {'online': 'online', 'setting': 'user', 'smylie': 'smyile'};
+    System.prototype.option_name = {'online': 'online', 'setting': 'user', 'smylie': 'smyile', 'upload' : 'upload'};
     System.prototype.object = {};
     System.prototype.smylie = [];
     System.prototype.is_socket = false;
@@ -64,6 +64,51 @@ var System = (function () {
         }
     }
 
+    System.prototype.uploadFilesClick = function(){
+        this.getDom("upload").getObject().click();//vi har nu valgt denne upload knap :)
+    };
+
+    System.prototype.showFileName = function(){
+        this.getDom("upload").onChange(function(){
+            system.getDom("fileName").context(system.getDom("upload").context());
+        });
+    };
+
+    System.prototype.uploadFile = function(){
+      var url = this.getDom("upload").context();
+
+        if(url == ''){
+            alert("You missing to select file!");
+        }else{
+            var form = new FormData();
+            form.append("fil",this.getDom("upload").getObject().files[0]);
+            var ajax = new JAjax({
+                'action' : 'upload.php',
+                'method' : 'post',
+                'protokol' : 'ajax',
+                'error'  : function(){
+                    system.stop_chat();
+                    system.get_object("status").error();
+                },
+                'success' : function(data){
+                    if(typeof data['error'] !== "undefined"){
+
+                    }else{
+                        system.new_ajax_query({
+                            'message' : '/file '+data.fileID,
+                            'channel' : system.chat_name
+                        },'server.php?userBlock=' + system.data.browserBlock+'&sort='+system.data.user.sort+"&li=" + system.get_last_id());
+                    }
+                },
+                'send' : form,
+                'file' : true,
+                'noHeader' : true
+            });
+
+            ajax.enable();
+        }
+    };
+
     System.prototype.init_sound = function(){
         this.set_object("sound",new Sound(this.getDom("newInChanMessage")));
         this.get_object("sound").maxTime(1);
@@ -109,7 +154,7 @@ var System = (function () {
             e.preventDefault();
             var c= new Command(this.getDom("textbox").context());
             if(c.isCommand() && c.get() === "join"){
-                this.send_ping(this.getDom("textbox").context(),"Bot");
+                this.send_ping(this.getDom("textbox").context(),'Bot');
                 this.getDom('textbox').empty();
                 return;
             }
@@ -157,9 +202,7 @@ var System = (function () {
                 if(this.liCache.lastIndexOf(msg['id']) != -1){
                     continue;
                 }
-            }
 
-            if(!is_from_cache){
                 this.update_last_id(msg['id']);
                 this.liCache.push(msg['id']);
             }
@@ -481,18 +524,20 @@ var System = (function () {
                 });
             break;
             case 'inaktiv':
-                this.getDom("user").run(function(){
-                   if(this.attr("uid") == msg['uid']){
-                       var obj = this.getObject().getElementsByClassName("u_nick")[0];
-                       obj.innerHTML = "<i>[i]"+command.get_param()[2]+"</i>";
-                   }
-                });
-                //vi sender nu en besked om at brugeren er inaktiv :)
-                this.get_object("message").bot_message(this.convert_lang_string('onInaktiv',{
-                    'nick' : command.get_param()[2]
-                }),msg['id'],'red','onInaktiv',{
-                    'nick' : command.get_param()[2]
-                });
+                if(this.is_in_this_channel(msg['channel'])){
+                    this.getDom("user").run(function(){
+                        if(this.attr("uid") == msg['uid']){
+                            var obj = this.getObject().getElementsByClassName("u_nick")[0];
+                            obj.innerHTML = "<i>[i]"+command.get_param()[2]+"</i>";
+                        }
+                    });
+                    //vi sender nu en besked om at brugeren er inaktiv :)
+                    this.get_object("message").bot_message(this.convert_lang_string('onInaktiv',{
+                        'nick' : command.get_param()[2]
+                    }),msg['id'],'red','onInaktiv',{
+                        'nick' : command.get_param()[2]
+                    });
+                }
             break;
             case 'notInaktiv':
                 this.get_object("message").bot_message(this.convert_lang_string("onNInaktiv",{
@@ -526,9 +571,33 @@ var System = (function () {
                     'nick' : command.get_param()[2]
                 });
             break;
+            case 'file':
+                this.addUploadedFile(command.get_param()[2],msg);
+            break;
             default:
             break;
         }
+    };
+
+    System.prototype.addUploadedFile = function(url,msg){
+        var part = url.split(".");
+        switch(part[(part.length-1)]){
+            case 'png':
+               //its image :)
+                this.get_object("message").bot_message(this.convert_lang_string("uploadImage",{
+                    'image' : '<span onclick="system.clickImage(this)" class="userDawnloadedImage"><img src="'+url+'"></span>',
+                    'nick'  : msg['nick']
+                }),msg['id'],'black','uploadImage',{
+                'image' : '<span onclick="system.clickImage(this)" class="userDawnloadedImage"><img src="'+url+'"></span>',
+                'nick'  : msg['nick']
+            });
+            break;
+        }
+    };
+
+    System.prototype.clickImage = function(obj){
+        this.getDom("viewImages").setImage(obj.getElementsByTagName("img")[0].src);
+        this.getDom("viewImage").show();
     };
 
     System.prototype.update_my_config = function(msg,command){
@@ -1066,7 +1135,9 @@ var System = (function () {
             },
             'protokol': this.get_protokol(),
             'host': this.data['socket']['server'],
-            'port': this.data['socket']['port']
+            'port': this.data['socket']['port'],
+            'file' : false,
+            'noHeader' : false
         });
         return id;
     };
@@ -1171,7 +1242,12 @@ var System = (function () {
             'title'            : J("#chattitle"),
             'user'             : J(".user"),
             'time'             : J("#time"),
-            'newInChanMessage' : J("#newInChanMessage")
+            'newInChanMessage' : J("#newInChanMessage"),
+            'save'             : J("#save"),
+            'upload'           : J("#upload"),
+            'fileName'         : J("#fileName"),
+            'viewImages'       : J("#viewImages"),
+            'viewImage'        : J("#viewImage")
         };
     };
 
@@ -1197,6 +1273,7 @@ var System = (function () {
         }
 
         this.set_object("lang",this.setNewLang(this.user_config['lang'],secondLang));
+        this.get_object("status").updateSprog(this.get_object("lang"));
         this.update_screen_lang();
         this.getDom("lang_select").getOptions(function(value,text,obj){
             if(value == system.langName){

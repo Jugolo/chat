@@ -38,6 +38,10 @@ var LibLang = {
         'unIgnore'        : 'Dont ignore',
         'onIgnore'        : 'You ignore now %nick',
         'onUnIgnore'      : 'You no longer ignore the user %nick',
+        'upload'          : 'Upload',
+        'uploadFiles'     : 'Upload file',
+        'uploadNow'       : 'Upload file now',
+        'uploadImage'     : '%nick uploaded the following image: %image',
         'day_short'      : [
             'Sun',
             'Mon',
@@ -124,6 +128,10 @@ var LibLang = {
         'unIgnore'        : 'ignore ikke længere',
         'onIgnore'        : 'Du ingoere nu %nick',
         'onUnIgnore'      : 'Du ingnorere ikke længere %nick',
+        'upload'          : 'Upload',
+        'uploadFiles'     : 'Upload fil',
+        'uploadNow'       : 'Upload filen nu!',
+        'uploadImage'     : '%nick uploadet føglende billed: %image',
         'day_short'      : [
             'Søn',
             'Man',

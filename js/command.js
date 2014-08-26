@@ -42,6 +42,7 @@ var Command = (function(){
             case 'getStatus':
             case 'update':
             case 'clear':
+            case 'file':
                 return true;
         }
         return false;

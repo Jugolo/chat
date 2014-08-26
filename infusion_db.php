@@ -20,3 +20,7 @@ if(!defined("DB_CHATNAME")){
 if(!defined("DB_CHATUCONFIG")){
     define("DB_CHATUCONFIG", DB_PREFIX."chat_userConfig");
 }
+
+if(!defined("DB_CHATFILE")){
+    define("DB_CHATFILE", DB_PREFIX."chat_file");
+}

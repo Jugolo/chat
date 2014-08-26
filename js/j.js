@@ -166,11 +166,11 @@ var Jdata = (function () {
 
     Jdata.prototype.setImage = function(url){
         if(this.Type == 'id' || this.Type == 'object'){
-            if(this.Obj.nodeName.toLowerCase() != 'img'){
-                alert("Only img is supportet");
+            if(this.Obj.nodeName.toLowerCase() == 'img'){
+                this.Obj.src = url;
+            }else{
+                this.Obj.style.backgroundImage = "url("+url+")";
             }
-
-            this.Obj.src = url;
         }
     };
 
@@ -249,12 +249,19 @@ var Jdata = (function () {
 
     Jdata.prototype.onChange = function(func){
         if(this.Type == "id" || this.Type == 'object'){
-            this.Obj.onchange = func;
+            Jdata.prototype.onChangeCall = func;
+            this.Obj.onchange = this.onChangeCall;
+        }else{
+            alert("Onchange not allow on "+this.Type);
         }
     };
 
     Jdata.prototype.getObject = function(){
         return this.Obj;
+    };
+
+    Jdata.prototype.onClick = function(func){
+      this.Obj.onclick = func;
     };
 
     return Jdata;

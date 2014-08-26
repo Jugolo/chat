@@ -1,6 +1,6 @@
 <?php
 interface ProtokolHead{
-    public function Protokol($mysqli,Server $server);
+    public function Protokol(DatabaseHandler $mysqli,Server $server);
     public function get_channel_by_id($id);
     public function get_ignore($uid = null);
     public function add_ignore($uid);
@@ -22,4 +22,5 @@ interface ProtokolHead{
     public function updateConfig($key,$value);
     public function getConfig($key);
     public function update();//happens evay time admin write /update
+    public function userConfig($key,$id = null);
 }

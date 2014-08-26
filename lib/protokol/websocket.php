@@ -98,6 +98,7 @@ class Protokol implements ProtokolHead{
             'uid'      => 0,
             'title'    => $title,
             'setTitle' => 0,
+            'isPm'     => No,
         );
 
         $this->bannet[$id] = array();
