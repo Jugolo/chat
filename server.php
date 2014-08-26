@@ -18,6 +18,7 @@
      private $sConfig          = array();
      private $protokol         = null;
      private $channel          = array();
+     private $json             = array();
 
      const text_max = 1;
      const text_min = 2;
@@ -63,8 +64,7 @@
         }else{
         	$this->showMessage();
         }
-        
-        Json::show();
+        exit(json_encode($this->json));
     }
 
 	 private function init_websocket(){
@@ -222,7 +222,7 @@
 	 
 	 private function add_socket_client($client){
 		 $this->client[]    = $client;
-		 $this->clientObj[] = $obj = new socket_user_client($client);
+		 $this->clientObj[] = $obj = new socket_user_client($client,$this->database);
 		 return $obj;
 	 }
 
@@ -280,10 +280,8 @@
 
          $dirObj = opendir($dir);
          while($file = readdir($dirObj)){
-             if($file != "." || $file != ".."){
-                 if(!preg_match("/^[a-zA-Z]*?_server\.php$/",$file) && !preg_match("/^index\.php$/",$file) && is_file($dir.$file)){
-                     $return[] = str_replace(".php",null,$file);
-                 }
+             if($file != "." && $file != ".." && is_dir($dir.$file)){
+                 $return[] = $file;
              }
          }
 
@@ -368,8 +366,9 @@
                 $message[] = $this->messageMakeSafe($row);
             }
     	}
-    	
-    	Json::addBlock("message", $message);
+
+
+        $this->json['message'] = $message;
 
         $data = $this->database->query("SELECT cm.isInAktiv, cm.id, cm.uid , us.nick, cm.cid, cn.name
         FROM `".DB_PREFIX."chat_member` AS cm
@@ -435,7 +434,9 @@
     }
     
     private function getUserIdFromNick($nick){
-    	$data = $this->database->query("SELECT `user_id` FROM `".DB_PREFIX."users` WHERE BINARY `nick`='".mysqli_escape_string(self::$mysql,$nick)."'");
+    	$sql = $this->database->prepare("SELECT `user_id` FROM `".DB_PREFIX."users` WHERE BINARY `nick`={nick}");
+        $sql->add("nick",$nick);
+        $data = $sql->done();
         if($this->database->isError)
             exit("Database error");
     	$row = $data->get();
@@ -466,7 +467,7 @@
     protected function getCidFromChannel($name){
 
         foreach($this->protokol->get_my_channel_list(false) as $data){
-            if($data['name'] == $name){
+            if(!empty($data['name']) && $data['name'] == $name){
                 $this->variabel['cid'] = $this->cid = $data['cid'];
                 return $data['cid'];
             }
@@ -530,7 +531,7 @@
             if($this->getVariabel("last_id")){
                 $this->showMessage();
             }else{
-                Json::addBlock("message",array());
+                $this->json['message'] = array();
             }
         }
     }
@@ -1198,7 +1199,7 @@
                 }
             }
         }else{
-    		Json::addBlock("isOkay", "false");
+            $this->json['isOkay'] = "false";
     		$this->sendBotPrivMessage($this->getVariabel("cid"), "/error ".$this->lang['nickBroken'], "red");
     	}
     }
@@ -1207,7 +1208,7 @@
 
      private function isMemberOfChannel($name){
          foreach($this->protokol->get_my_channel_list(false) as $data){
-             if($data['name'] == $name){
+             if(!empty($data['name']) && $data['name'] == $name){
                  return true;
              }
          }
@@ -1470,7 +1471,6 @@
             $load = array(
                 $this->get_base_part()."lib\\define.php",
                 $this->get_base_part()."lib\\db.php",
-                $this->get_base_part()."lib\\json.php",
                 $this->get_base_part()."lib\\protokol\\Protokol.php",
                 $this->get_base_part()."lib\\db\\mysqli.php"
             );
@@ -1478,7 +1478,6 @@
             $load = array(
                 'lib/define.php',
                 'lib/db.php',
-                'lib/json.php',
                 'lib/protokol/Protokol.php',
                 'lib/db/mysqli.php'
             );
@@ -1522,7 +1521,8 @@
 		if($this->login()){
            //do nothing :)
 		}else{
-			Json::location("../../index.php?error=session");
+            $this->json['location'] = "../../index.php?error=sessiong";
+            exit(json_encode($this->json));
         }
 	}
 
@@ -1927,6 +1927,7 @@
      private $cookie      = false;
      public  $aktiv       = array();
      public  $ignore      = array();
+     private $mysql       = array();
 
      function kick($cid,$isBan = false){
          if(!empty($this->channel[$cid])){
@@ -1939,8 +1940,9 @@
          $this->kick($cid,true);
      }
 
-     function socket_user_client($socket){
+     function socket_user_client($socket, DatabaseHandler $mysql){
 		 $this->socket = $socket;
+         $this->mysql  = $mysql;
 	 }
 
      function update_my_nick($newNick){
@@ -1972,11 +1974,11 @@
          //vi spliter den ad ;)
          $user_cookie_data = explode(".",$user_cookie);
 
-         $sql = mysqli_query(Server::$mysql,"SELECT * FROM `".DB_PREFIX."users` WHERE
+         $sql = $this->mysql->query("SELECT * FROM `".DB_PREFIX."users` WHERE
          `user_id`='".(empty($user_cookie_data[0]) ? '0' : (int)$user_cookie_data[0])."'
          AND `user_status`='0'
          AND `user_actiontime`='0'");
-         $row = mysqli_fetch_array($sql);
+         $row = $sql->get();
 
          if(empty($row)){
              echo "empty row";
@@ -2152,8 +2154,8 @@
      }
 
      private function get_user_config(){
-         $sql = mysqli_query(Server::$mysql,"SELECT * FROM `".DB_PREFIX."chat_userConfig` WHERE `uid`='".$this->user['user_id']."'");
-         while($row = mysqli_fetch_array($sql)){
+         $sql = $this->mysql->query("SELECT * FROM `".DB_PREFIX."chat_userConfig` WHERE `uid`='".$this->user['user_id']."'");
+         while($row = $sql->get()){
              $this->user_config[$row['key']] = $row['value'];
          }
 

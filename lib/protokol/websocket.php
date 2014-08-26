@@ -11,9 +11,11 @@ class Protokol implements ProtokolHead{
     private $main       = null;
     private $bannet     = array();
 
-    public function Protokol($mysql,Server $server){
+    private $channelNameCache = array();
+
+    public function Protokol(DatabaseHandler $mysqli,Server $server){
         $this->main = $server;
-        $this->mysql = $mysql;
+        $this->mysql = $mysqli;
     }
 
     function get_channel_by_id($id){
@@ -56,7 +58,7 @@ class Protokol implements ProtokolHead{
             return array();
         }
 
-        if(!empty($this->client[$this->user['user_id']])){
+        if(!empty($this->client[$this->user['user_id']]->channel)){
             return $this->client[$this->user['user_id']]->channel;
         }else{
             return array();
@@ -72,7 +74,9 @@ class Protokol implements ProtokolHead{
             'lastActiv' => time(),
             'isInAktiv' => No,
             'ban'       => No,
+            'name'      => $this->channelNameCache[$cid]
         );
+        echo "\r\n".$this->channelNameCache[$cid]."\r\n\r\n";
     }
 
     function new_channel($name,$title = null,$isSystem = false){
@@ -90,6 +94,8 @@ class Protokol implements ProtokolHead{
             $this->new_channel("Bot","Global bot system",true);
             $id = count($this->channel);
         }
+
+        $this->channelNameCache[$id] = $name;
 
         $this->channel[$id] = array(
             'id'       => $id,
@@ -114,9 +120,10 @@ class Protokol implements ProtokolHead{
 
     function get_flood($cid){
         if(empty($this->flood[$this->user['user_id']])){
-            $this->flood[$this->user['user_id']] = array(
-                $cid => array(),
-            );
+            $this->flood[$this->user['user_id']] = array();
+        }
+        if(empty($this->flood[$this->user['user_id']][$cid])){
+            $this->flood[$this->user['user_id']][$cid] = array();
         }
 
         return $this->flood[$this->user['user_id']][$cid];
@@ -156,7 +163,7 @@ class Protokol implements ProtokolHead{
         $this->client[$uid]->channel[$cid]['ban']   = Yes;
         $this->client[$uid]->channel[$cid]['banTo'] = $banTo;
         if($save){
-            mysqli_query($this->mysql,"INSERT INTO `".DB_PREFIX."chat_member` (
+            $this->mysql->query("INSERT INTO `".DB_PREFIX."chat_member` (
             `uid`,
             `cid`,
             `lastActiv`,
@@ -179,7 +186,7 @@ class Protokol implements ProtokolHead{
         $i = array_search($uid,$this->bannet[$cid]);
         unset($this->bannet[$cid][$i]);
         if($remove){
-            mysqli_query($this->mysql,"DELETE FROM `".DB_PREFIX."chat_member`
+            $this->mysql->query("DELETE FROM `".DB_PREFIX."chat_member`
         WHERE `uid`='".$uid."'
         AND `cid`='".$cid."'");
         }
@@ -217,8 +224,8 @@ class Protokol implements ProtokolHead{
         }
 
         $this->bannet = array();//protect against fail.
-        $sql = mysqli_query($this->mysql,"SELECT * FROM `".DB_PREFIX."chat_member` WHERE `id`<>'1' AND `ban`='".Yes."'");
-        while($row = mysqli_fetch_array($sql)){
+        $sql = $this->mysql->query("SELECT * FROM `".DB_PREFIX."chat_member` WHERE `id`<>'1' AND `ban`='".Yes."'");
+        while($row = $sql->get()){
             $this->banUser(
                 $row['cid'],
                 $row['uid'],
@@ -226,5 +233,15 @@ class Protokol implements ProtokolHead{
                 false
             );
         }
+    }
+
+    function userConfig($key,$id = null){
+        $sql = $this->database->query("SELECT * FROM `".DB_PREFIX."chat_userconfig` WHERE `uid`='".(int)$id."'");
+        $return = array();
+        while($row = $sql->get()){
+            $return[$row['key']] = $row['value'];
+        }
+
+        return $return;
     }
 }
