@@ -78,7 +78,7 @@ opentable("<span id='chattitle'>Jugolo chat</span>");
 echo "<div id='chatContainer'>
  <div id='leftContainer'>
    <div id='channelList' class='capmain'>
-    <div id='statusIndikator'></div>
+    <div id='statusIndikator' onclick='system.reloadChatPage();'></div>
    </div>
    <div id='channelMain'>
    

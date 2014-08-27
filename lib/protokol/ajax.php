@@ -132,8 +132,8 @@ class Protokol implements ProtokolHead{
         $data->add("title",$title);
         $data->done();
 
-        if($this->mysql->isError){
-            exit($this->mysql->getError());
+        if($this->database->isError){
+            exit($this->database->getError());
         }
 
         $id = $this->database->lastIndex();

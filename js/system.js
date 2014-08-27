@@ -64,6 +64,13 @@ var System = (function () {
         }
     }
 
+    System.prototype.reloadChatPage = function(){
+        console.log("[start]reloadChatPage");
+        this.stop_chat();
+        this.new_ajax_query(undefined,'server.php?userBlock=' + this.data.browserBlock+'&sort='+this.data.user.sort+"&li=" + this.get_last_id());
+        console.log("[done]reloadChatPage");
+    };
+
     System.prototype.uploadFilesClick = function(){
         this.getDom("upload").getObject().click();//vi har nu valgt denne upload knap :)
     };
