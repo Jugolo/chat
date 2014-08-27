@@ -1,12 +1,12 @@
 <?php
 if (!defined("IN_FUSION")) { die("Access Denied"); }
 
-if (file_exists(INFUSIONS."chat/locale/".$settings['locale'].".php")) {
+if (file_exists(INFUSIONS."chat/locale/".$settings['locale']."/client.php")) {
 	// Load the locale file matching the current site locale setting.
-	include INFUSIONS."chat/locale/".$settings['locale'].".php";
+	include INFUSIONS."chat/locale/".$settings['locale']."/client.php";
 } else {
 	// Load the infusion's default locale file.
-	include INFUSIONS."chat/locale/English.php";
+	include INFUSIONS."chat/locale/English/client.php";
 }
 
 include INFUSIONS."chat/infusion_db.php";
@@ -77,7 +77,8 @@ PRIMARY KEY (`id`)
 $inf_newtable[6] = DB_CHATFILE."(
   `id` int(11) NOT NULL AUTO_INCREMENT,
    `name` varchar(255) NOT NULL,
-   `url` text NOT NULL
+   `url` text NOT NULL,
+   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM";
 
 $inf_insertdbrow[1]  = DB_SETTINGS_INF." (settings_name, settings_value, settings_inf) VALUES('startChannel', '#Jugolo', '".$inf_folder."')";
@@ -108,6 +109,7 @@ $inf_droptable[2] = DB_CHATMEMBER;
 $inf_droptable[3] = DB_CHATNAME;
 $inf_droptable[4] = DB_CHATUCONFIG;
 $inf_droptable[5] = DB_IGNOERE;
+$inf_droptable[6] = DB_CHATFILE;
 
 $inf_deldbrow[1] = DB_SETTINGS_INF." WHERE settings_inf='".$inf_folder."'";
 $inf_deldbrow[2] = DB_ADMIN." WHERE admin_rights='CHAD' OR admin_rights='CHADBAN' OR admin_rights='CHADLOG'";

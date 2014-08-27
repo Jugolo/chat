@@ -119,20 +119,22 @@ class Protokol implements ProtokolHead{
          `isPriv`,
          `uid`,
          `title`,
-         `setTitle`,
-         `isPm`
+         `setTitle`
          ) VALUE (
          {name},
          '".No."',
          '0',
          {title},
-         '".$this->user['user_id']."',
-         '".No."'
+         '".$this->user['user_id']."'
          )");
 
         $data->add("name",$name);
         $data->add("title",$title);
         $data->done();
+
+        if($this->mysql->isError){
+            exit($this->mysql->getError());
+        }
 
         $id = $this->database->lastIndex();
         $this->channel[$id] = array(
@@ -141,7 +143,6 @@ class Protokol implements ProtokolHead{
             'uid'      => 0,
             'title'    => $title,
             'setTitle' => $this->user['user_id'],
-            'isPm'     => No
         );
 
         $d = $this->channel[$id];
@@ -267,7 +268,10 @@ class Protokol implements ProtokolHead{
     }
 
     private function getUserConfig($id){
-        $sql = $this->database->query("SELECT * FROM `".DB_PREFIX."chat_userconfig` WHERE `uid`='".(int)$id."'");
+        $sql = $this->database->query("SELECT * FROM `".DB_PREFIX."chat_userConfig` WHERE `uid`='".(int)$id."'");
+        if($this->database->isError){
+            exit($this->database->getError());
+        }
         $return = array();
         while($row = $sql->get()){
             $return[$row['key']] = $row['value'];

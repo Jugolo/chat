@@ -1,4 +1,6 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
  class Server{
      
      protected $config;
@@ -53,7 +55,7 @@
 		if($this->websocket){
 			$this->init_websocket();
 		}else{
-			if("socket" == $this->getConfig("protokol") && $this->getVariabel("isPm")){
+			if("socket" == $this->getConfig("protokol")){
 				exit("This is not ajax webserver but WebSocket server!");
 			}
 		}
@@ -64,6 +66,15 @@
         }else{
         	$this->showMessage();
         }
+
+        if($this->database->isError){
+            exit($this->database->getError());
+        }
+
+        if(empty($this->json['message'])){
+            $this->json['message'] = array();
+        }
+
         exit(json_encode($this->json));
     }
 
@@ -330,10 +341,6 @@
     
     //message sektion
     private function showMessage(){
-        if($this->getVariabel("isPm")){
-            $this->getPMMessage();
-            return;
-        }
         //vi sletter nu pong beskeder som er mere end 1 min gammel :)
         $this->database->query("DELETE FROM `".DB_PREFIX."chat_message` WHERE `cid`='1' AND `message`='/pong' AND DATE_SUB(time, INTERVAL 1 MINUTE) > NOW()");
         if($this->database->isError){
@@ -502,7 +509,6 @@
 
         //WebSocket has a problem. bannet user can write in the channel soo wee control it now :)
         if($this->getVariabel("cid") != 1 && in_array($this->protokol->user['user_id'],$this->protokol->getBannetInChannel($this->getVariabel("cid")))){
-            exit($this->getVariabel("cid")." -> ".$input['channel']);
             return;
         }
 
@@ -571,6 +577,10 @@
         WHERE `uid`='".(int)$this->protokol->user['user_id']."'
         AND `cid`='".(int)$this->getVariabel("cid")."'");
 
+        if($this->database->isError){
+            exit($this->database->getError());
+        }
+
     	$row = $data->get();
     	
     	if($row['isInAktiv'] == Yes){
@@ -578,6 +588,10 @@
     	}
     	
     	$this->database->query("UPDATE `".DB_PREFIX."chat_member` SET `lastActiv`= NOW(), `isInAktiv`='".No."' WHERE `cid`='".(int)$row['cid']."' AND `uid`='".$this->protokol->user['user_id']."'");
+
+        if($this->database->isError){
+            exit($this->database->getError());
+        }
     }
     
     private function handleMessage($data){
@@ -587,11 +601,11 @@
 		}
 
         if($this->websocket){
-
             $this->send_message_to_users($data['message']);
             return;//websocket sender direkte til brugerenerne så vi har ikke brug for denne del :)
         }
-    	$data = $this->database->prepare("INSERT INTO `".DB_PREFIX."chat_message`
+
+    	$datas = $this->database->prepare("INSERT INTO `".DB_PREFIX."chat_message`
             (
             `uid`,
             `cid`,
@@ -612,9 +626,13 @@
                 '0'
                 )");
 
-        $data->add("message",$this->post("message"));
-        $data->add("tx",$this->protokol->userConfig("textColor"));
-        $data->done();
+        $datas->add("message",$data['message']);
+        $datas->add("tx",(string)$this->protokol->userConfig("textColor"));
+        $datas->done();
+
+        if($this->database->isError){
+            exit($this->database->getError());
+        }
     }
 
     private function get_user_id_from_nick($nick){
@@ -1464,6 +1482,11 @@
          if($this->database->isError){
              exit("MySQLI startup error");
          }
+
+         unset($this->variabel['db_host']);
+         unset($this->variabel['db_user']);
+         unset($this->variabel['db_pass']);
+         unset($this->variabel['db_data']);
      }
     
     private function loadPages(){
@@ -1565,7 +1588,6 @@
     }
     
     private function loadVariabel(){
-        $this->variabel['roomId']    = $this->get("roomId")    ? $this->get("roomId")    : null;
         $this->variabel['isPost']    = $this->get("isPost")    ? true : false;
         $this->variabel['last_id']   = $this->get('li')        ? (int)$this->get('li') : 0;
     }

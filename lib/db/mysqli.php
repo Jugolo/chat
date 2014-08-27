@@ -19,8 +19,6 @@ class DatabaseHandler{
     function query($sql){
         $result = $this->head->query($sql);
         if($this->strstwidth($sql,"SELECT")){
-
-        }else{
             if(!$result){
                 $this->saveError(
                     $this->head->error,
@@ -82,7 +80,7 @@ class DatabaseResult{
     }
 
     function get(){
-        return $this->result->fetch_assoc();
+        return @$this->result->fetch_assoc();
     }
 }
 
