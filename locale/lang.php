@@ -3,6 +3,12 @@
 header('Content-Type: text/javascript; charset=UTF-8');
 header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 3600) . ' GMT');
 
+//wee need to se if wee have lang_js_cache.php
+if(file_exists("../lib/tmp/lang_js_cache.php")){
+    include("../lib/tmp/lang_js_cache.php");
+    exit;
+}
+
 function getLang($dir){
     if(file_exists($dir."/javascript.php")){
         return include($dir."/javascript.php");
@@ -37,4 +43,10 @@ while($file = readdir($dir)){
     }
 }
 
-echo "var LibLang = ".PHPArrayToJavaScriptObject($l).";";
+$cache = "var LibLang = ".PHPArrayToJavaScriptObject($l).";";
+
+$obj = fopen("../lib/tmp/lang_js_cache.php","w");
+fwrite($obj,"//this is cache\r\n".$cache);
+fclose($obj);
+
+echo $cache;
