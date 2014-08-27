@@ -11,7 +11,7 @@ require_once 'infusion_db.php';
 require_once 'lib/db.php';
 
 if(!is_dir(DOWNLOADS."chat")){
-    mkdir(DOWNLOADS."chat", 0700);
+    mkdir(DOWNLOADS."chat", 755);
 }
 
 $json = array();
