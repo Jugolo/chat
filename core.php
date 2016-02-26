@@ -61,8 +61,7 @@ foreach($coreConfig["core"]["module"] as $name => $data){
    //wee control if the core file exsist.
    if(!file_exsists($dir)){
       //noo this module is not exists. Wee move to new page to install this module if there is install url in this module else it will show a error message
-      header("location: ".$coreConfig["core"]["modulInstall"]);
-      exit;
+      exit("unknown core module ". $dir);
    }
 
    CoreModule::loadModule($name, $data);// handle the module soo wee can init the module :)
