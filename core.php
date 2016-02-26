@@ -1,6 +1,39 @@
 <?php
+define("CHAT_CORE_VERSION", "V0.1");
+
 function getCoreModulDir($name){
   return "core/module/core_module_".$name.".php";
+}
+
+class CoreModule{
+  private static $dataCache = array();//here wee cash the data about the module
+  private static $moduleCache = array();//here wee cache the modules
+
+  public static function loadModule($name, $data){
+     //first wee include the file :)
+
+     include getCoreModulDir($name);// wee know it exists.
+
+     $cName = self::getClassName($name);
+
+     //control if the class exists
+     if(!class_exists($cName)){
+       exit("Missing the core module class ".$cName);
+     }
+
+     $obj = new $cName();
+
+     if(!($obj instanceof CoreModule)){
+       exit("the core module class for ".$name." Is not instance of CoreModule");
+     }
+
+     self::$dataCache[$name] = $data;
+     self::$moduleCache[$name] = $obj;
+  }
+
+  privatw static function getClassName($name){
+      return "CoreModule_".$name;
+  }
 }
 
 //Control if wee got core config file
@@ -25,4 +58,6 @@ foreach($coreConfig["core"]["module"] as $name => $data){
       header("location: ".$coreConfig["core"]["modulInstall"]);
       exit;
    }
+
+   CoreModule::loadModule($name, $data);// handle the module soo wee can init the module :)
 }
