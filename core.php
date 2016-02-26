@@ -31,7 +31,7 @@ class CoreModule{
      self::$moduleCache[$name] = $obj;
   }
 
-  privatw static function getClassName($name){
+  private static function getClassName($name){
       return "CoreModule_".$name;
   }
 }
