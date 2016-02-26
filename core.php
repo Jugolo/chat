@@ -1,6 +1,11 @@
 <?php
 define("CHAT_CORE_VERSION", "V0.1");
 
+interface CoreModule{
+   function init();
+   function end();
+}
+
 function getCoreModulDir($name){
   return "core/module/core_module_".$name.".php";
 }
@@ -69,4 +74,9 @@ foreach($coreConfig["core"]["module"] as $name => $data){
 
 CoreModule::trigger(function($data, $obj){
     $obj->init();
+});
+
+//now are wee done soo wee can end the diffrence module
+CoreModule::trigger(function($data, $obj){
+  $obj->end();
 });
