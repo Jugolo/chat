@@ -31,6 +31,12 @@ class CoreModule{
      self::$moduleCache[$name] = $obj;
   }
 
+  public function trigger($func){
+       foreach(self::$moduleCache as $name => $obj){
+           $func(self::$dataCache[$name], $obj);
+       }
+  }
+
   private static function getClassName($name){
       return "CoreModule_".$name;
   }
@@ -61,3 +67,7 @@ foreach($coreConfig["core"]["module"] as $name => $data){
 
    CoreModule::loadModule($name, $data);// handle the module soo wee can init the module :)
 }
+
+CoreModule::trigger(function($data, $obj){
+    $obj->init();
+});
