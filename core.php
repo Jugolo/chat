@@ -4,6 +4,10 @@ define("IN_CHAT", true);
 
 include "multi_include.php";//load multi include to get all file wee need
 
+if(($error = Database::connect(database_config()))){
+  exit("[Database error]".$error);
+}
+
 //if this is NOT cli wee want to set ajax variabel!
 if(!is_cli()){
  init_ajax();
