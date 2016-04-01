@@ -7,3 +7,4 @@ include("include/system.php");
 include("include/server.php");
 include("include/database.php");
 include("include/config.php");
+include("include/session.php");
