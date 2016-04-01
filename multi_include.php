@@ -4,3 +4,4 @@ if(!defined("IN_CHAT")){
 }
 
 include("include/system.php");
+include("include/server.php");
