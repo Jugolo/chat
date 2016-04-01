@@ -11,10 +11,7 @@ class Session{
       if(self::token_exists($token))
          return self::create();
 
-      self::$sessions[$tokens] = [
-         "created" => time(),
-         "context" => [],
-      ];
+      self::$sessions[$tokens] = new SessionData($token, time(), []);
 
       return $token;
    }
@@ -43,4 +40,36 @@ class Session{
 
       return $return;
    }
+}
+
+
+class SessionData extends ArrayIterator{
+    private $token;
+
+    public function __construct($token){
+       $this->token = $created;
+    }
+
+    public function control(){
+        //wee got all data about this session.
+        $sql = Database::query("SELECT * FROM ".table("session_data")." WHERE `token`=".Database::qlean($this->token));
+        //here wee detect if the data should be created
+        if($sql->rows() == 0){
+           $data = [
+             "token"   => $this->token,
+             "created" => time(),
+           ]; 
+           if(!Database::insert("session_data", $data))
+              return false;//failed to create the token.
+        }else{
+           $data = $sql->fetch();
+        }
+
+        $time = 60*60;
+
+        if(time()-$time > $data["created"])
+           return false;
+
+        return true;
+    }
 }
