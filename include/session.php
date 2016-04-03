@@ -5,13 +5,28 @@ class Session{
    private static $current = null;
 
    public static create(){
-      //wee need to create a new tokens to the user
-      $token = self::new_token();
+      $isFound = false;
+
+      if(!is_cli()){
+        if(cookie("identify")){
+          $token   = cookie("identify");
+          $isFound = true;
+        }
+      }
+
+      if(!$isFound){
+        //wee need to create a new tokens to the user
+        $token = self::new_token();
+      }
 
       if(self::token_exists($token))
          return self::create();
 
       self::$sessions[$tokens] = new SessionData($token, time(), []);
+
+      if(!is_cli()){
+        Ajax::createCookie("identify", $token);
+      }
 
       return $token;
    }
