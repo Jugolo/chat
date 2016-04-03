@@ -4,25 +4,41 @@ class Session{
    private static $sessions = [];
    private static $current = null;
 
-   public static create(){
-      $isFound = false;
+   public static function add_token($token){
+      if(!self::token_exists($token))
+        return false;
 
-      if(!is_cli()){
-        if(cookie("identify")){
-          $token   = cookie("identify");
-          $isFound = true;
-        }
+      $session = self::$token[$token] = new SessionData($token);
+      if(!$session->control()){
+         self::remove($token);
+         return false;
       }
 
-      if(!$isFound){
-        //wee need to create a new tokens to the user
-        $token = self::new_token();
-      }
+      self::set_current($token);
+      return true;
+   }
 
+   public static function remove($token){
+      $query = Database::query("DELETE FROM `".table("session_data")."` WHERE `token`=".Database::qlean($token));
+      if($query->rows() != 0){
+         //controle if wee got a cache of the session 
+         if(!empty(self::sessions[$token])){
+           unset(self::sessions[$token]);
+         }
+   
+         return true;
+      }
+   
+      return false;
+   }
+
+   public static function create(){
+      $token = self::new_token();
+     
       if(self::token_exists($token))
          return self::create();
 
-      self::$sessions[$tokens] = new SessionData($token, time(), []);
+      self::$sessions[$tokens] = new SessionData($token);
 
       if(!is_cli()){
         Ajax::createCookie("identify", $token);
