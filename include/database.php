@@ -25,6 +25,26 @@ class Database{
 
       return new DatabaseResult($query);
   }
+
+  public static function insert($table, array $data){
+     return self::query(self::createInsert($table, $data));
+  }
+
+  public static function qlean($item){
+     return self::$connection->real_escape_string($item);
+  }
+
+  private static function createInsert($table, array $data){
+     $row   = [];
+     $value = [];
+
+     foreach($data as $key => $values){
+        $row[]   = $key;
+        $value[] = self::qlean($values);
+     }
+
+     return "INSERT INTO `".table($table)."` (`".implode("`,`", $row).") VALUES ('".implode("','", $value)."')";
+  }
 }
 
 function table($name){
