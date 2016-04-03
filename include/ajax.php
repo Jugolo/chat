@@ -11,4 +11,8 @@ class Ajax{
       header($value[0].": ".$value[1], empty($value[2]) ? true : $value[2]);
    }
  }
+
+ public static function createCookie($name, $data){
+   return setcookie($name, $data, time()+60*60*24*31, "/", "", false, false);
+ }
 }
