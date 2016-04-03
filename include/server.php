@@ -16,4 +16,13 @@ function init_ajax(){
    ["Cache-Control", "post-check=0, pre-check=0", false],
    ["Pragma",        "no-cache"],
  ]);
+ //start session handler :) 
+ $sessionOk = false;
+ if(cookie("identify") && Session::add_token(cookie("identify"))){
+   $sessionOk = true;
+ }
+
+ if(!$sessionOk){
+   Session::set_current(Session::create());
+ }
 }
