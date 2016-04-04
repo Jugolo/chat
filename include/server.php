@@ -21,6 +21,9 @@ function serverSocketStart(){
   $websocket->add_callback(function(WebSocket $websocket, $message){
      if(!empty($websocket->current_client->connectionData["token"]))
        Session::set_current($websocket->current_client->connectionData["token"]);
+     else
+       Session::set_current(null);//no token got so it not login
+       
 
      handlePost($message);
   });
