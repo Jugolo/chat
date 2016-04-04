@@ -31,6 +31,31 @@ function serverAjaxStart(){
  
 }
 
+function handlePost($message){
+   //is this globel message or is it channel message. 
+   //globel message "Command: data
+   //channel "Command Channel: data
+   $first = explode(" ", substr($message, 0, strpos($message, ": ")));
+   $data  = substr($message, strpos($message, ": ")+1);
+   if(count($first) == 1){
+     handleGlobelPost($first[0], $data);
+   }else{
+     hansleChannelMessage($first[0], $first[1], $data);
+   }
+}
+
+function handleGlobelPost($command, $data){
+   switch($command){
+      case "LOGIN":
+
+      break;
+   }
+}
+
+function handleChannelPost($command, $channel, $data){
+
+}
+
 /**
 Ajax server need to set varibels and header. This is happens here
 */
