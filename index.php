@@ -16,6 +16,3 @@ function session_init(){
 
 //<-page start here.
 session_init();
-
-if(is_cli())
-  unlink("websocket.txt");
