@@ -58,10 +58,18 @@ function handleChannelPost($command, $channel, $data){
 
 function send($msg, $private = false){
   if(is_cli()){
-
+    WebSocketSend($msg, $private);
   }else{
   
   }
+}
+
+function WebSocketSend($msg, $private){
+    if($private){
+      //wee send it right away now.
+      WebSocketCache::$cache->write_line($msg);
+      return;
+    }
 }
 
 /**
