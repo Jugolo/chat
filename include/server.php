@@ -17,7 +17,7 @@ function serverSocketStart(){
     exit("[Error] the system need 2 agument. Host and port. The server could not start");
   }
 
-  $websocket = new WebSocket();
+  WebSocketCache::$cache = $websocket = new WebSocket();
   $websocket->add_callback(function(WebSocket $websocket, $message){
      if(!empty($websocket->current_client->connectionData["token"]))
        Session::set_current($websocket->current_client->connectionData["token"]);
