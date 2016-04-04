@@ -8,6 +8,8 @@ if(($error = Database::connect(database_config()))){
   exit("[Database error]".$error);
 }
 
+Config::init();
+
 //if this is NOT cli wee want to set ajax variabel!
 if(!is_cli()){
  init_ajax();
