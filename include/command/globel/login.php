@@ -1,7 +1,7 @@
 <?php
 
 function globel_login($data){
-  if(!is_cli()){
+  if(!is_cli() && cookie("identify") != $data){
      send("ERROR: invald token");
      return false;
   }
