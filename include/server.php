@@ -77,12 +77,26 @@ function send($msg, $private = false){
   }
 }
 
-function WebSocketSend($msg, $private){
+function send_channel($channel, $message){
+   Channel::renderUsersInChannel(&channel, function(ChannelMember $member){
+      if(is_cli()){
+        WebSocketSend($message, false, $member->getUser(), $channel);
+      }
+   });
+}
+
+function WebSocketSend($msg, $private, $user = null, $channel = null){
     if($private){
       //wee send it right away now.
       WebSocketCache::$cache->write_line($msg);
       return;
     }
+
+    WebSocketCache::$cache->render_clients(function(WebSocketClient $client){
+        if(!empty($client->connectionData["token"]) && $client->connectionData["token"] == $user->token()){
+          $client->write_line($message);
+        }
+    });
 }
 
 /**
