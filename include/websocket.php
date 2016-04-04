@@ -6,6 +6,7 @@ class WebSocket{
    private $connection = [];
    private $client     = [];
    private $run        = true;
+   private $current_client;
 
    public function init($host, $port){
       $this->server = socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
@@ -37,10 +38,29 @@ class WebSocket{
             $this->remove($socket);
             continue;
           }
-
-          
+          $this->current_client = $client;
+          handle_post($this->unmask($buffer));
         }
       }
+   }
+
+   private function unmask($text){
+      $length = ord($text[1]) & 127;
+      if($length == 126) {
+         $masks = substr($text, 4, 4);
+         $data = substr($text, 8);
+      }elseif($length == 127) {
+         $masks = substr($text, 10, 4);
+         $data = substr($text, 14);
+      }else {
+         $masks = substr($text, 2, 4);
+         $data = substr($text, 6);
+      }
+      $text = "";
+      for ($i = 0; $i < strlen($data); ++$i) {
+          $text .= $data[$i] ^ $masks[$i%4];
+      }
+      return $text;
    }
 
    private function remove($socket){
@@ -60,7 +80,7 @@ class WebSocket{
          return $read;
        }
 
-       while(($line = $user->read_line(false)) != null){
+       while(($line = $read_line($connection)) != null){
          if(preg_match('/\A(\S+): (.*)\z/', $line, $matches)){
            $header[$matches[1]] = $matches[2];
          }
@@ -83,19 +103,13 @@ class WebSocket{
 
 class WebSocketClient{
    private $stream;
+   public  $token = null;
    public $connectionData = [];
 
    public function __construct($stream){
      $this->stream = $stream;
    }
 
-   public function read_line(){
-     $read = socket_read($this->stream, 1024, PHP_NORMAL_READ);
-     if($read == "")
-       return null;
-     return $read;
-   }
-   
    public function write_line($str){
      if(!socket_write($this->stream, $str."\r\n", strlen($str."\r\n")))
       echo "[".$this->stream."]failed to write the line: ".$str."\r\n";
