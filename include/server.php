@@ -40,6 +40,16 @@ function handlePost($message){
    //channel "Command Channel: data
    $first = explode(" ", substr($message, 0, strpos($message, ": ")));
    $data  = substr($message, strpos($message, ": ")+1);
+
+   //control if the user has a token. 
+   if(Session::getCurrentToken() == null){
+      if(count($first) == 1 && $first[0] == "LOGIN")
+        globel_login("LOGIN", $data);
+      else
+        send("ERROR: You are not login yet", true);
+      return;
+   }
+
    if(count($first) == 1){
      handleGlobelPost($first[0], $data);
    }else{
