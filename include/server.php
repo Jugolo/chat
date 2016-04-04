@@ -17,6 +17,13 @@ function serverSocketStart(){
     exit("[Error] the system need 2 agument. Host and port. The server could not start");
   }
 
+  $fopen = fopen("websocket.txt", "w");
+  fwrite($fopen, serialize([
+     "host" => $argv[0],
+     "port" => $argv[1]
+  ]));
+  fclose($fopen);
+
   WebSocketCache::$cache = $websocket = new WebSocket();
   $websocket->add_callback(function(WebSocket $websocket, $message){
      if(!empty($websocket->current_client->connectionData["token"]))
