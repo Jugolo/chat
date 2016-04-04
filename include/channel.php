@@ -31,11 +31,13 @@ class Channel{
     }
 
     Database::insert("channels", [
-       "name" => $name,
-       "title" => ($title == null ? $name : $title),
+       "name"        => $name,
+       "title"       => ($title == null ? $name : $title),
+       "start_group" => 0,
     ]);
 
     $channel = self::get($name);
+    ChannelGroup::append_user($channel->id(), get_user()->id(), Config::get("start_group"));
   }
 }
 
@@ -45,4 +47,10 @@ class ChannelData{
   public function __construct($data){
     $this->data = $data;
   }
+}
+
+class ChannelGroup{
+   public static function append_user($cid, $uid, $gid){
+
+   }
 }
