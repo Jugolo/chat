@@ -63,6 +63,7 @@ class Session{
       if(!empty(self::$sessions[$token]))
         return true;
 
+      $sql = Database::query("SELECT * FROM `".table("session_data")."` WHERE `token`=
       return false;
    }
 
