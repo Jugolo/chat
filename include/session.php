@@ -48,7 +48,7 @@ class Session{
    }
 
    public static function set_current($token){
-     if(!self::token_exists($token))
+     if($token != null && !self::token_exists($token))
         return false;
 
       self::$current = $token;
