@@ -8,3 +8,6 @@ include("include/server.php");
 include("include/database.php");
 include("include/config.php");
 include("include/session.php");
+
+//globel command
+include("include/command/globel/login.php");
