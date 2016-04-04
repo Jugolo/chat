@@ -12,6 +12,12 @@ class WebSocket{
    private $run        = true;
    private $current_client;
 
+   public function render_clients($callback){
+     foreach($this->client as $client){
+       $callback($client);
+     }
+   }
+
    public function add_callback($callback){
      $this->callback = $callback;
    }
