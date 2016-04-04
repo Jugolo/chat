@@ -56,6 +56,14 @@ function handleChannelPost($command, $channel, $data){
 
 }
 
+function send($msg, $private = false){
+  if(is_cli()){
+
+  }else{
+  
+  }
+}
+
 /**
 Ajax server need to set varibels and header. This is happens here
 */
