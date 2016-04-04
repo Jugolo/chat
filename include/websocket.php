@@ -1,5 +1,9 @@
 <?php
 
+class WebSocketCache{
+   public static $cache = null;
+}
+
 class WebSocket{
    private $callback   = null;
    private $server     = null;
