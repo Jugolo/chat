@@ -19,7 +19,7 @@ class Config{
   private static $data = [];
 
   public static function init(){
-    $sql = Database::query("SELECT * FROM `".table("config")."`);
+    $sql = Database::query("SELECT * FROM `".table("config")."`");
     while($row = $sql->fetch())
       self::$data[$row["key"]] = $row["value"];
   }
