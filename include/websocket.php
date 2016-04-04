@@ -20,15 +20,47 @@ class WebSocket{
         $read = $this->connection;
         $write = $ex = null;
         @socket_select($read, $write, $ex, null);
-        
+        foreach($read as $socket){
+          if($this->server == $socket){
+            $c = socket_accept($socket);
+            if($c < 0){
+              echo "[".$c."]failed to accept new connection\r\n";
+            }else{
+              $this->handshake($socket);
+            }
+            continue;
+          }
+
+          $client = $this->client[$socket];
+          $r = @socket_recv($socket,$buffer,1024,0);
+          if(!$r || $r == 0){
+            $this->remove($socket);
+            continue;
+          }
+
+          
+        }
       }
+   }
+
+   private function remove($socket){
+     $this->client[$socket]->close();
+     unset($this->client[$socket]);
+     array_splice($this->connection, array_search($socket, $this->connection), 1);
    }
 
    private function handshake($connection){
        $user = $this->new_client($connection);
 
        $header = [];
-       while(($line = $user->read_line()) != null){
+       $read_line = function($stream){
+         $read = socket_read($this->stream, 1024, PHP_NORMAL_READ);
+         if($read == "")
+           return null;
+         return $read;
+       }
+
+       while(($line = $user->read_line(false)) != null){
          if(preg_match('/\A(\S+): (.*)\z/', $line, $matches)){
            $header[$matches[1]] = $matches[2];
          }
@@ -58,7 +90,7 @@ class WebSocketClient{
    }
 
    public function read_line(){
-     $read = socket_read($this->stream, PHP_NORMAL_READ);
+     $read = socket_read($this->stream, 1024, PHP_NORMAL_READ);
      if($read == "")
        return null;
      return $read;
