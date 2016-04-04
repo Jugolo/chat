@@ -53,6 +53,10 @@ class Session{
 
       self::$current = $token;
    }
+  
+   public function getCurrentToken(){
+      return self::$current;
+   } 
 
    private static token_exists($token){
       //if it not exists in the session array it not exists at all!
