@@ -5,7 +5,7 @@ function get_user(){
 }
 
 function getUserById($id){
-  return User::run(function(UserData $user){
+  return User::run(function(UserData $user) use($id){
      if($user->id() == $id)
        return $user;
      return false;
