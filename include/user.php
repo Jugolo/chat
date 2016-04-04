@@ -4,6 +4,10 @@ function get_user(){
    return User::get(Session::getCurrentToken());
 }
 
+function getUserById($name){
+
+}
+
 class User{
   private $user = [];
 
