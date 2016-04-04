@@ -43,9 +43,14 @@ class Channel{
 
 class ChannelData{
   private $data;
+  private $users = [];
 
   public function __construct($data){
     $this->data = $data;
+  }
+
+  public function is_member($uid){
+    return array_search($uid, $this-users);
   }
 }
 
