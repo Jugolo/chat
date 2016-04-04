@@ -57,7 +57,7 @@ class Session{
          }
 
          Database::query("DELETE FROM `".table("session_data")."` WHERE `token`=".Database::qlean($token)." OR `ip`=".Database::qlean(ip()));
-         Database
+         Database::query("DELETE FROM `".table("session")."` WHERE `sid`='".$row["id"]."'");
       }
       return false;
    }
