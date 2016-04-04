@@ -47,7 +47,7 @@ function handlePost($message){
 function handleGlobelPost($command, $data){
    switch($command){
       case "LOGIN":
-
+        globel_login($command, $data);
       break;
    }
 }
