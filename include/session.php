@@ -32,21 +32,6 @@ class Session{
       return false;
    }
 
-   public static function create(){
-      $token = self::new_token();
-     
-      if(self::token_exists($token))
-         return self::create();
-
-      self::$sessions[$tokens] = new SessionData($token);
-
-      if(!is_cli()){
-        Ajax::createCookie("identify", $token);
-      }
-
-      return $token;
-   }
-
    public static function set_current($token){
      if($token != null && !self::token_exists($token))
         return false;
@@ -63,7 +48,17 @@ class Session{
       if(!empty(self::$sessions[$token]))
         return true;
 
-      $sql = Database::query("SELECT * FROM `".table("session_data")."` WHERE `token`=
+      $sql = Database::query("SELECT * FROM `".table("session_data")."` WHERE `token`=".Database::qlean($token)." OR `ip`=".Database::qlean(ip()));
+      if($sql->rows() == 1){
+         $row = $sql->fetch();
+         if($row["ip"] == ip() && $row["token"] == $token){
+           self::$token[$token] = new SessionData($token, $row);
+           return true;
+         }
+
+         Database::query("DELETE FROM `".table("session_data")."` WHERE `token`=".Database::qlean($token)." OR `ip`=".Database::qlean(ip()));
+         Database
+      }
       return false;
    }
 
@@ -80,32 +75,10 @@ class Session{
 
 
 class SessionData extends ArrayIterator{
-    private $token;
+    private $token, $data;
 
-    public function __construct($token){
+    public function __construct($token, $data){
        $this->token = $created;
-    }
-
-    public function control(){
-        //wee got all data about this session.
-        $sql = Database::query("SELECT * FROM ".table("session_data")." WHERE `token`=".Database::qlean($this->token));
-        //here wee detect if the data should be created
-        if($sql->rows() == 0){
-           $data = [
-             "token"   => $this->token,
-             "created" => time(),
-           ]; 
-           if(!Database::insert("session_data", $data))
-              return false;//failed to create the token.
-        }else{
-           $data = $sql->fetch();
-        }
-
-        $time = 60*60;
-
-        if(time()-$time > $data["created"])
-           return false;
-
-        return true;
+       $this->data  = $data;
     }
 }
