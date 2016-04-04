@@ -4,12 +4,25 @@ function get_user(){
    return User::get(Session::getCurrentToken());
 }
 
-function getUserById($name){
-
-}
+function getUserById($id){
+  return User::run(function(UserData $user){
+     if($user->id() == $id)
+       return $user;
+     return false;
+  });
+} 
 
 class User{
-  private $user = [];
+  private static $user = [];
+
+  public static function run($callback){
+    foreach(self::$user as $u){
+       if($return = $callback($u))
+         return $return;
+    }
+
+    retur null;
+  }
 
   public static function get($token){
      if(self::exists($token)){
