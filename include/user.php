@@ -21,9 +21,21 @@ class User{
 
      $sql = Database::query("SELECT * FROM `".table("user")."` WHERE `token`=".Database::qlean($token));
      if($sql->rows()){
-       self::$user[$token] = $sql->fetch();
+       self::$user[$token] = new User($sql->fetch());
        return true;
      }
 
      return false;
+}
+
+class UserData{
+   private $data = [];
+
+   public function __construct(array $data){
+     $this->data = $data;
+   }
+  
+   public function id(){
+     return $this->data["id"];
+   }
 }
