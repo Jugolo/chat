@@ -1,7 +1,10 @@
 <?php
-
 class Channel{
   private static $channles = [];
+
+  public static function renderUsersInChannel($channel, $callback){
+     return self::get("channel")->render_user($callback);
+  }
 
   public static function exists($name){
     if(!empty(self::$channels[$name]))
@@ -43,6 +46,10 @@ class Channel{
 class ChannelData{
   private $data;
   private $users = [];
+
+  public function render_user($callback){
+
+  }
 
   public function __construct($data){
     $this->data = $data;
