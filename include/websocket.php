@@ -114,7 +114,6 @@ class WebSocket{
 
 class WebSocketClient{
    private $stream;
-   public  $token = null;
    public $connectionData = [];
 
    public function __construct($stream){
