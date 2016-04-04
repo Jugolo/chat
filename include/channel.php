@@ -26,7 +26,16 @@ class Channel{
   }
 
   public function create($name, $title=null){
+    if(self::exists($name)){
+       return false;
+    }
 
+    Database::insert("channels", [
+       "name" => $name,
+       "title" => ($title == null ? $name : $title),
+    ]);
+
+    $channel = self::get($name);
   }
 }
 
