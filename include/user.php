@@ -67,4 +67,8 @@ class UserData{
         $channel->join($this);
      }
    }
+
+   public function ip(){
+     return $this->data["ip"];
+   }
 }
