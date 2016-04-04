@@ -61,8 +61,7 @@ class ChannelData{
     $sql = Database::query("SELECT * FROM `".table("channel_member")."` WHERE `cid`='".$this->id()."' AND `uid`=".Database::qlean($uid));
 
     if($sql->rows() == 1){
-       $buffer = $sql->fetch();
-       $this->users[$uid] = new ChannelMember($cid, getUserById($uid));
+       $this->users[$uid] = new ChannelMember($sql->fetch(), getUserById($uid));
        return true;
     }
 
