@@ -12,6 +12,19 @@ function server_start(){
 
 function serverSocketStart(){
   global $argv;
+
+  if(count($argv) != 2){
+    exit("[Error] the system need 2 agument. Host and port. The server could not start");
+  }
+
+  $websocket = new WebSocket();
+  $websocket->add_callback(function(WebSocket $websocket, $message){
+     if(!empty($websocket->current_client->connectionData["token"]))
+       Session::set_current($websocket->current_client->connectionData["token"]);
+
+     handlePost($message);
+  });
+  $websocket->init($argv[0], $argv[1]);
 }
 
 function serverAjaxStart(){
