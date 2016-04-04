@@ -78,7 +78,7 @@ function send($msg, $private = false){
 }
 
 function send_channel($channel, $message){
-   Channel::renderUsersInChannel(&channel, function(ChannelMember $member){
+   Channel::renderUsersInChannel($channel, function(ChannelMember $member){
       if(is_cli()){
         WebSocketSend($message, false, $member->getUser(), $channel);
       }
