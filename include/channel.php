@@ -36,8 +36,7 @@ class Channel{
        "start_group" => 0,
     ]);
 
-    $channel = self::get($name);
-    ChannelGroup::append_user($channel->id(), get_user()->id(), Config::get("start_group"));
+    self::get($name)->join(get_user(), Config::get("start_group"));
   }
 }
 
@@ -49,13 +48,42 @@ class ChannelData{
     $this->data = $data;
   }
 
+  public function id(){
+    return $this->data["id"];
+  }
+
   public function is_member($uid){
-    return array_search($uid, $this-users);
+    //control if wee got the user cached
+    if(!empty($this->users[$uid]))
+      return true;
+  
+    //wee control if the user is member but not yet cached.
+    $sql = Database::query("SELECT * FROM `".table("channel_member")."` WHERE `cid`='".$this->id()."' AND `uid`=".Database::qlean($uid));
+
+    if($sql->rows() == 1){
+       $buffer = $sql->fetch();
+       $this->users[$uid] = new ChannelMember($cid, getUserById($uid));
+       return true;
+    }
+
+    return false;
+  }
+
+  public function join(UserData $user, $gid = null){
+    if(!$this->is_member($user->id())){
+      Database::insert("channel_member", [
+         "uid" => $user->id(),
+         "cid" => $this->id(),
+         "gid" => $gid == null ? 0 : $gid,
+         "activ" => time(),
+      ]);
+      
+      return $this->is_member($user->id());
+    }
+    return false;
   }
 }
 
-class ChannelGroup{
-   public static function append_user($cid, $uid, $gid){
+class ChannelMember{
 
-   }
 }
