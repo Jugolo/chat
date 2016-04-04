@@ -16,11 +16,16 @@ class User{
   private static $user = [];
 
   public static function run($callback){
-    foreach(self::$user as $u){
-       if($return = $callback($u))
-         return $return;
-    }
+    $sql = Database::query("SElECT * FROM `".table("user")."`");
+    while($row = $sql->fetch()){
+      if(!empty(self::$user[$row["token"]]))
+        $u = self::$user[$row["token"]];
+      else
+        $u = self::$user[$row["token"]] = new UserData($row);
 
+      if($return = $callback($u))
+        return $return;
+    }
     retur null;
   }
 
