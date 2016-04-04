@@ -38,4 +38,11 @@ class UserData{
    public function id(){
      return $this->data["id"];
    }
+
+   public function join_channel($name, $data){
+     $channel = Channel::get($name);
+     if(!$channel->is_member($this->id()){
+        $channel->join($this);
+     }
+   }
 }
