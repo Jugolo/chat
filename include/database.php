@@ -31,7 +31,7 @@ class Database{
   }
 
   public static function qlean($item){
-     return self::$connection->real_escape_string($item);
+     return "'".self::$connection->real_escape_string($item)."'";
   }
 
   private static function createInsert($table, array $data){
@@ -43,12 +43,12 @@ class Database{
         $value[] = self::qlean($values);
      }
 
-     return "INSERT INTO `".table($table)."` (`".implode("`,`", $row).") VALUES ('".implode("','", $value)."')";
+     return "INSERT INTO `".table($table)."` (`".implode("`,`", $row).") VALUES (".implode(",", $value).")";
   }
 }
 
 function table($name){
-  return Database::$prefix.$name;
+  return Database::$prefix."chat_".$name;
 }
 
 class DatabaseResult{
