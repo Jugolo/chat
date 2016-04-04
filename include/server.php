@@ -44,7 +44,7 @@ function handlePost($message){
    //control if the user has a token. 
    if(Session::getCurrentToken() == null){
       if(count($first) == 1 && $first[0] == "LOGIN")
-        globel_login("LOGIN", $data);
+        globel_login($data);
       else
         send("ERROR: You are not login yet", true);
       return;
@@ -59,8 +59,8 @@ function handlePost($message){
 
 function handleGlobelPost($command, $data){
    switch($command){
-      case "LOGIN":
-        globel_login($command, $data);
+      case "JOIN":
+        globel_join($data);
       break;
    }
 }
