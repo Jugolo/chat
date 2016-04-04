@@ -31,7 +31,7 @@ function serverSocketStart(){
 }
 
 function serverAjaxStart(){
- 
+  
 }
 
 function handlePost($message){
@@ -44,6 +44,10 @@ function handlePost($message){
    //control if the user has a token. 
    if(Session::getCurrentToken() == null){
       if(count($first) == 1 && $first[0] == "LOGIN")
+        if(!is_cli() && cookie("identify") != $data){
+          send("ERROR: Token is broken");
+          return;
+        }
         globel_login($data);
       else
         send("ERROR: You are not login yet", true);
