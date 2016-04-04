@@ -14,3 +14,17 @@ function database_config(){
     "prefix" => DB_PREFIX,
   ];
 }
+
+class Config{
+  private static $data = [];
+
+  public static function init(){
+    $sql = Database::query("SELECT * FROM `".table("config")."`);
+    while($row = $sql->fetch())
+      self::$data[$row["key"]] = $row["value"];
+  }
+
+  public function get($key){
+    return self::$data[$key];
+  }
+}
