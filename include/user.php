@@ -61,7 +61,7 @@ class UserData{
      return $this->data["id"];
    }
 
-   public function join_channel($name, $data){
+   public function join_channel($name){
      $channel = Channel::get($name);
      if(!$channel->is_member($this->id()){
         $channel->join($this);
