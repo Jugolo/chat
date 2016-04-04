@@ -8,6 +8,10 @@ class WebSocket{
    private $run        = true;
    private $current_client;
 
+   public function add_callback($callback){
+     $this->callback = $callback;
+   }
+
    public function init($host, $port){
       $this->server = socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
       socket_set_option($this->server,SOL_SOCKET,SO_REUSEADDR,1);
@@ -39,7 +43,10 @@ class WebSocket{
             continue;
           }
           $this->current_client = $client;
-          handle_post($this->unmask($buffer));
+          if($this->callback != null){
+             $buf = $this->callback;
+             $buf($this, $buffer);
+          }
         }
       }
    }
