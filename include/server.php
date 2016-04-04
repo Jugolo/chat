@@ -78,7 +78,7 @@ function send($msg, $private = false){
 }
 
 function send_channel($channel, $message){
-   Channel::renderUsersInChannel($channel, function(ChannelMember $member){
+   Channel::renderUsersInChannel($channel, function(ChannelMember $member) use($channel, $message){
       if(is_cli()){
         WebSocketSend($message, false, $member->getUser(), $channel);
       }
@@ -92,7 +92,7 @@ function WebSocketSend($msg, $private, $user = null, $channel = null){
       return;
     }
 
-    WebSocketCache::$cache->render_clients(function(WebSocketClient $client){
+    WebSocketCache::$cache->render_clients(function(WebSocketClient $client) use($user, $message){
         if(!empty($client->connectionData["token"]) && $client->connectionData["token"] == $user->token()){
           $client->write_line($message);
         }
