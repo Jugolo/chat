@@ -31,7 +31,7 @@ class User{
 
   public static function get($token){
      if(self::exists($token)){
-        return self::$user[$token];
+        return self::$user[$token]; 
      }
 
      return false;
