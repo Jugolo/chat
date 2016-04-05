@@ -23,7 +23,7 @@ class Session{
           dbquery("DELETE FROM `".DB_PREFIX."chat_session_data` WHERE `token`='".cookie("identify")."'");
         }
         remove_cookie("identify");
-        return session_start();
+        return self::session_start();
      }
    }
 }
