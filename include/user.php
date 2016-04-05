@@ -42,7 +42,7 @@ class User{
       return true;
 
      $sql = Database::query("SELECT * FROM `".table("user")."` WHERE `token`=".Database::qlean($token));
-     if($sql->rows()){
+     if($sql->rows() == 1){
        self::$user[$token] = new UserData($sql->fetch());
        return true;
      }
