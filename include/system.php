@@ -14,3 +14,10 @@ function cookie($name, $def = null){
 
   return $_COOKIE[$name];
 }
+
+function remove_cookie($name){
+  if(cookie($name)){
+    setcookie($name, "", time()-1234);
+    unset($_COOKIE[$name]);
+  }
+}
