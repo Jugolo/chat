@@ -26,7 +26,7 @@ class User{
       if($return = $callback($u))
         return $return;
     }
-    retur null;
+    return null;
   }
 
   public static function get($token){
