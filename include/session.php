@@ -3,27 +3,22 @@
 class Session{
    private static $sessions = [];
    private static $current = null;
+   private static $token;
 
    public static function add_token($token){
       if(!self::token_exists($token))
         return false;
 
-      $session = self::$token[$token] = new SessionData($token);
-      if(!$session->control()){
-         self::remove($token);
-         return false;
-      }
-
-      self::set_current($token);
-      return true;
+      self::$sessions[$token] = new SessionData($token);
+      return self::set_current($token);
    }
 
    public static function remove($token){
       $query = Database::query("DELETE FROM `".table("session_data")."` WHERE `token`=".Database::qlean($token));
       if($query->rows() != 0){
          //controle if wee got a cache of the session 
-         if(!empty(self::sessions[$token])){
-           unset(self::sessions[$token]);
+         if(!empty(self::$sessions[$token])){
+           unset(self::$sessions[$token]);
          }
    
          return true;
@@ -37,14 +32,15 @@ class Session{
         return false;
 
       self::$current = $token;
+      return true;
    }
   
-   public function getCurrentToken(){
+   public static function getCurrentToken(){
       return self::$current;
    } 
 
-   private static token_exists($token){
-      //if it not exists in the session array it not exists at all!
+   private static function token_exists($token){
+   	  //if it not exists in the session array it not exists at all!
       if(!empty(self::$sessions[$token]))
         return true;
 
@@ -55,30 +51,22 @@ class Session{
            self::$token[$token] = new SessionData($token, $row);
            return true;
          }
-
          Database::query("DELETE FROM `".table("session_data")."` WHERE `token`=".Database::qlean($token)." OR `ip`=".Database::qlean(ip()));
          Database::query("DELETE FROM `".table("session")."` WHERE `sid`='".$row["id"]."'");
       }
       return false;
    }
-
-   private static function new_token(){
-      $use = "qwertyuioplkjhgfdsazxcvbnm.,?!'-/:;()&@[]{}#%^*+=£$€><~|\_1234567890";
-      $return = "";
-      for($i=0;$i<1001;$i++){
-        $return .= $use[mt_rand(0, count($use)-1)];
-      }
-
-      return $return;
-   }
 }
 
 
 class SessionData extends ArrayIterator{
-    private $token, $data;
+    private $token;
 
-    public function __construct($token, $data){
-       $this->token = $created;
-       $this->data  = $data;
+    public function __construct($token){
+       $this->token = $token;
+    }
+    
+    public function control(){
+    	
     }
 }

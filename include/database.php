@@ -9,12 +9,20 @@ class Database{
   /**
    connect to the database.
   */
-  public function connect(array $data){
+  public static function connect(array $data){
+  	if(!class_exists("mysqli")){
+  		exit("This server uses mysqli class. it is not supportet in this serve.\r\n please install it on the server and try agin");
+  	}
+  	
     $con = self::$connection = new mysqli($data["host"], $data["user"], $data["pass"], $data["data"]);
     if($con->connect_error)
       return $con->connect_error;
      
     self::$prefix = $data["prefix"];
+    ShoutDown::add(function(){
+    	Database::close();//close the connection when wee are done
+    });
+    
     return false;
   }
 
@@ -27,11 +35,22 @@ class Database{
   }
 
   public static function insert($table, array $data){
-     return self::query(self::createInsert($table, $data));
+     $result = self::query($sql = self::createInsert($table, $data));
+     if(!$result){
+     	echo "[SQL Insert error]\r\n";
+     	echo "[Message]".self::$connection->error."\r\n";
+     	echo "[Number] ".self::$connection->errno."\r\n";
+     	echo "[SQL]    ".$sql."\r\n";
+     	exit;
+     }
   }
 
   public static function qlean($item){
      return "'".self::$connection->real_escape_string($item)."'";
+  }
+  
+  public static function close(){
+  	self::$connection->close();
   }
 
   private static function createInsert($table, array $data){
@@ -43,7 +62,7 @@ class Database{
         $value[] = self::qlean($values);
      }
 
-     return "INSERT INTO `".table($table)."` (`".implode("`,`", $row).") VALUES (".implode(",", $value).")";
+     return "INSERT INTO `".table($table)."` (`".implode("`,`", $row)."`) VALUES (".implode(",", $value).")";
   }
 }
 

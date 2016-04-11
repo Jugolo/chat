@@ -13,6 +13,8 @@ class Ajax{
  }
 
  public static function createCookie($name, $data){
-   return setcookie($name, $data, time()+60*60*24*31, "/", "", false, false);
+   if(setcookie($name, $data, time()+60*60*24*31, "/", "", false, false)){
+   	 $_COOKIE[$name] = $data;
+   }
  }
 }

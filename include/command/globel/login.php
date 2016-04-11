@@ -6,5 +6,10 @@ function globel_login($data){
      return false;
   }
   
-  send("LOGIN: ".(Session::add_token($data) ? "true" : "false"), true);
+  $isOkay = Session::add_token($data);
+  if(is_cli() && $isOkay){
+  	WebSocketCache::$cache->getCurrent()->connectionData["token"] = $data;
+  }
+  
+  send("LOGIN: ".($isOkay ? "true" : "false"), true);
 }

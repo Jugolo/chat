@@ -1,133 +1,229 @@
 <?php
-
 class WebSocketCache{
-   public static $cache = null;
+	public static $cache = null;
 }
-
 class WebSocket{
-   private $callback   = null;
-   private $server     = null;
-   private $connection = [];
-   private $client     = [];
-   private $run        = true;
-   private $current_client;
-
-   public function render_clients($callback){
-     foreach($this->client as $client){
-       $callback($client);
-     }
-   }
-
-   public function add_callback($callback){
-     $this->callback = $callback;
-   }
-
-   public function init($host, $port){
-      $this->server = socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
-      socket_set_option($this->server,SOL_SOCKET,SO_REUSEADDR,1);
-      if(!filter_var($host, FILTER_VALIDATE_IP)){
-          $host = gethostbyname($host);
-      }
-      socket_bind($this->server, $host, $port);
-      socket_listen($this->server, 20);
-      $this->new_client($this->server);
-      while($this->run){
-        $read = $this->connection;
-        $write = $ex = null;
-        @socket_select($read, $write, $ex, null);
-        foreach($read as $socket){
-          if($this->server == $socket){
-            $c = socket_accept($socket);
-            if($c < 0){
-              echo "[".$c."]failed to accept new connection\r\n";
-            }else{
-              $this->handshake($socket);
-            }
-            continue;
-          }
-
-          $client = $this->client[$socket];
-          $r = @socket_recv($socket,$buffer,1024,0);
-          if(!$r || $r == 0){
-            $this->remove($socket);
-            continue;
-          }
-          $this->current_client = $client;
-          if($this->callback != null){
-             $buf = $this->callback;
-             $buf($this, $buffer);
-          }
-        }
-      }
-   }
-
-   private function unmask($text){
-      $length = ord($text[1]) & 127;
-      if($length == 126) {
-         $masks = substr($text, 4, 4);
-         $data = substr($text, 8);
-      }elseif($length == 127) {
-         $masks = substr($text, 10, 4);
-         $data = substr($text, 14);
-      }else {
-         $masks = substr($text, 2, 4);
-         $data = substr($text, 6);
-      }
-      $text = "";
-      for ($i = 0; $i < strlen($data); ++$i) {
-          $text .= $data[$i] ^ $masks[$i%4];
-      }
-      return $text;
-   }
-
-   private function remove($socket){
-     $this->client[$socket]->close();
-     unset($this->client[$socket]);
-     array_splice($this->connection, array_search($socket, $this->connection), 1);
-   }
-
-   private function handshake($connection){
-       $user = $this->new_client($connection);
-
-       $header = [];
-       $read_line = function($stream){
-         $read = socket_read($this->stream, 1024, PHP_NORMAL_READ);
-         if($read == "")
-           return null;
-         return $read;
-       }
-
-       while(($line = $read_line($connection)) != null){
-         if(preg_match('/\A(\S+): (.*)\z/', $line, $matches)){
-           $header[$matches[1]] = $matches[2];
-         }
-       }
-
-       $key = base64_encode(sha1($header["Sec-WebSocket-Key"].'258EAFA5-E914-47DA-95CA-C5AB0DC85B11', true));
-       $user->write_line("HTTP/1.1 101 Web Socket Protocol Handshake");
-       $user->write_line("Upgrade: websocket");
-       $user->write_line("Connection: Upgrade");
-       $user->write_line("Sec-WebSocket-Accept: ".$key);
-       $user->write_line("");
-       echo "[".$connection."] connected to the server\r\n";
-   }
-
-   private function new_client($socket){
-     $this->connection[] = $socket;
-     return $this->client[$socket] = new WebSocketClient($socket);
-   }
+	private $events = [];
+	private $host, $port;
+	private $socket = null;
+	private $run = true;
+	private $connections = [];
+	private $clients = [];
+	private $currentClient = null;
+	public function __construct($host, $port){
+		if(!is_numeric($port))
+			return null;
+		
+		$this->host = $host;
+		$this->port = $port;
+	}
+	public function render_clients($callback){
+		foreach ($this->clients as $client){
+			$callback($client);
+		}
+	}
+	public function getCurrent(){
+		return $this->currentClient;
+	}
+	public function init(){
+		if(empty($this->host)||empty($this->port))
+			return false;
+		
+		if(!function_exists("socket_create"))
+			return false;
+		
+		if(($this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP))===false)
+			return false;
+		
+		if(socket_set_option($this->socket, SOL_SOCKET, SO_REUSEADDR, 1)===false)
+			return false;
+		
+		if(!filter_var($this->host, FILTER_VALIDATE_IP)){
+			$this->host = gethostbyname($this->host);
+		}
+		
+		if(@socket_bind($this->socket, $this->host, $this->port)===false){
+			return false;
+		}
+		
+		if(socket_listen($this->socket, 20)===false){
+			return false;
+		}
+		
+		$this->newClient($this->socket, true);
+		return true;
+	}
+	public function appendEvents($event, $callback){
+		if(empty($this->events[$event])){
+			$this->events[$event] = $callback;
+			return true;
+		}
+		
+		return false;
+	}
+	public function listen(){
+		$this->run = true; // if the websocket is stopped befor start it here
+		while($this->run){
+			$read = $this->connections;
+			$write = $ex = null;
+			@socket_select($read, $write, $ex, null);
+			if(in_array($this->socket, $read)){
+				$this->newClient(socket_accept($this->socket));
+			}else{
+				foreach($read as $socket){
+					//wee set the current client :)
+					$this->currentClient = $this->getClient($socket);
+					while (@socket_recv($socket, $buf, 1024, 0) >= 1){
+						$this->triggerEvents("onmessage", $this->unmask($buf));
+						break 2;
+					}
+					
+					//look up after disconnected user :)
+					$buffer = @socket_read($socket, 1024, PHP_NORMAL_READ);
+					if($buffer == null){
+						$this->removeClient($socket);
+					}
+				}
+			}
+		}
+	}
+	private function newClient($stream, $onStart = false){
+		if($stream < 0){
+			echo "Fail to accept socket: ".$stream."\r\n";
+			return;
+		}
+		$this->connections[] = $stream;
+		$this->clients[] = $obj = new WebSocketClient($stream);
+		if(!$onStart)
+			$this->handshake($stream);
+		return $obj;
+	}
+	private function removeClient($stream){
+		echo "Remove client: ".$stream."\r\n";
+		//trigger event onclose
+		$this->triggerEvents("onclose", null);
+		unset($this->connections[array_search($stream, $this->connections)]);
+		for($i = 0; $i<count($this->clients); $i++)
+			if($this->clients[$i]->isStream($stream)){
+				array_slice($this->clients, $i, 1);
+				return;
+			}
+		
+		@socket_close($stream);
+	}
+	private function getClient($stream){
+		for($i=0;$i<count($this->clients);$i++){
+			if($this->clients[$i]->isStream($stream)){
+				return $this->clients[$i];
+			}
+		}
+		
+		return null;
+	}
+	private function handshake($stream){
+		$head = array();
+		// handshake :)
+		$lines = explode("\r\n", socket_read($stream, 1024));
+		for($i = 0; $i<count($lines); $i++){
+			$line = trim($lines[$i]);
+			if(preg_match('/\A(\S+): (.*)\z/', $line, $matches)){
+				$head[$matches[1]] = $matches[2];
+			}
+		}
+		if(empty($head['Sec-WebSocket-Key'])){
+			$this->removeClient($stream);
+			echo "Missing Sec-WebSocket-Key\r\n";
+			return false;
+		}
+		$key = $head['Sec-WebSocket-Key'];
+		$hkey = base64_encode(sha1($key.'258EAFA5-E914-47DA-95CA-C5AB0DC85B11', true));
+		
+		$uhead = array();
+		
+		$uhead[] = "HTTP/1.1 101 Web Socket Protocol Handshake";
+		$uhead[] = "Upgrade: websocket";
+		$uhead[] = "Connection: Upgrade";
+		$uhead[] = "Sec-WebSocket-Accept: ".$hkey;
+		$handshake = implode("\r\n", $uhead)."\r\n\r\n";
+		// exit($handshake);
+		if(socket_write($stream, $handshake, strlen($handshake))===false){
+			exit("Handshake fail");
+		}
+		echo "New client connected to server\r\n";
+		return null;
+	}
+	
+	private function unmask($text){
+			$length = ord($text[1]) & 127;
+	if ($length == 126) {
+		$masks = substr($text, 4, 4);
+		$data = substr($text, 8);
+	} elseif ($length == 127) {
+		$masks = substr($text, 10, 4);
+		$data = substr($text, 14);
+	} else {
+		$masks = substr($text, 2, 4);
+		$data = substr($text, 6);
+	}
+	$text = "";
+	for ($i = 0; $i < strlen($data); ++$i) {
+		$text.= $data[$i] ^ $masks[$i % 4];
+	}
+	return $text;
+	}
+	
+	private function triggerEvents($name, $data){
+		if(!empty($this->events[$name])){
+			$buffer = $this->events[$name];
+			$buffer($this->currentClient, $data);
+		}
+	}
 }
-
 class WebSocketClient{
-   private $stream;
-   public $connectionData = [];
+	private $stream;
+	public $connectionData = [];
+	private $myIp = null;
+	public function __construct($stream){
+		$this->stream = $stream;
+	}
+	public function isStream($stream){
+		return $this->stream==$stream;
+	}
+	public function write_line($str){
+		$string = $this->mask($str);
+		if(!$s = @socket_write($this->stream, $string."\r\n", strlen($string."\r\n")))
+			echo "[".$this->stream."]failed to write the line: ".$str."\r\n";
+		
+		echo "[S]".$str."\r\n";
+	}
+	public function close(){
+		@socket_close($this->stream);
+	}
+	public function ip(){
+		if($this->myIp==null){
+			socket_getpeername($this->stream, $this->myIp);
+		}
+		return $this->myIp;
+	}
+	private function mask($data){
+		$frame = array();
+        $encoded = "";
+        $frame[0] = 0x81;
+        $data_length = strlen($data);
 
-   public function __construct($stream){
-     $this->stream = $stream;
-   }
+        if($data_length <= 125){
+            $frame[1] = $data_length;
+        }else{
+            $frame[1] = 126;
+            $frame[2] = $data_length >> 8;
+            $frame[3] = $data_length & 0xFF;
+        }
 
-   public function write_line($str){
-     if(!socket_write($this->stream, $str."\r\n", strlen($str."\r\n")))
-      echo "[".$this->stream."]failed to write the line: ".$str."\r\n";
-   }
+        for($i=0;$i<sizeof($frame);$i++){
+            $encoded .= chr($frame[$i]);
+        }
+
+        $encoded .= $data;
+        return $encoded;
+	}
 }

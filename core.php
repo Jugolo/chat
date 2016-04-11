@@ -18,5 +18,7 @@ if(!is_cli()){
 //finaly wee load and set up the diffrence libary so now wee can start the server and let it running until its goal is done.
 server_start();
 
-if(is_cli())
-   unlink("websocket.txt");
+if(is_cli() && file_exists("include/websocket.txt"));
+   @unlink("include/websocket.txt");
+
+ShoutDown::onEnd();

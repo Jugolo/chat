@@ -12,6 +12,7 @@ include("include/ajax.php");
 include("include/channel.php");
 include("include/user.php");
 include("include/websocket.php");
+include("include/shutdown.php");
 
 
 //globel command

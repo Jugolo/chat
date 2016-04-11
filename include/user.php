@@ -34,7 +34,7 @@ class User{
         return self::$user[$token]; 
      }
 
-     return false;
+     return null;
   }
 
   public static function exists($token){
@@ -48,10 +48,12 @@ class User{
      }
 
      return false;
+  }
 }
 
 class UserData{
    private $data = [];
+   private $channels = [];
 
    public function __construct(array $data){
      $this->data = $data;
@@ -60,12 +62,45 @@ class UserData{
    public function id(){
      return $this->data["id"];
    }
+   
+   public function nick(){
+   	 return $this->data["nick"];
+   }
 
    public function join_channel($name){
      $channel = Channel::get($name);
-     if(!$channel->is_member($this->id()){
-        $channel->join($this);
+     if($channel == null){
+     	Channel::create($name);
+     	return;
      }
+     
+     if(!$channel->is_member($this->id())){
+        if($channel->join($this)){
+        	$this->channels[$channel->id()] = $chanenl->name();
+        }
+     }
+   }
+   
+   public function leave_channel($name){
+   	  $channel = Channel::get($name);
+   	  if($channel != null){
+   	  	//control if member of this channel
+   	  	if($channel->is_member($this->id())){
+   	  		$channel->leave($this);
+   	  		unset($this->channels[$channel->id()]);
+   	  		return true;
+   	  	}
+   	  }
+   	  
+   	  return false;
+   }
+   
+   public function getChannelsId(){
+   	  return array_values($this->channels);
+   }
+   
+   public function getChannelNames(){
+   	  return array_keys($this->channels);
    }
 
    public function ip(){

@@ -1,132 +1,159 @@
 <?php
 /**
-Start the chat server. It will not send header or other task, it takes the request and parse it to actions.
-*/
+ Start the chat server. It will not send header or other task, it takes the request and parse it to actions.
+ */
 function server_start(){
-  if(is_cli()){
-    serverSocketStart();
-  }else{
-    serverAjaxStart();
-  }
+	if(is_cli()){
+		serverSocketStart();
+	}else{
+		serverAjaxStart();
+	}
 }
-
 function serverSocketStart(){
-  global $argv;
-
-  if(count($argv) != 2){
-    exit("[Error] the system need 2 agument. Host and port. The server could not start");
-  }
-
-  $fopen = fopen("websocket.txt", "w");
-  fwrite($fopen, serialize([
-     "host" => $argv[0],
-     "port" => $argv[1]
-  ]));
-  fclose($fopen);
-
-  WebSocketCache::$cache = $websocket = new WebSocket();
-  $websocket->add_callback(function(WebSocket $websocket, $message){
-     if(!empty($websocket->current_client->connectionData["token"]))
-       Session::set_current($websocket->current_client->connectionData["token"]);
-     else
-       Session::set_current(null);//no token got so it not login
-       
-
-     handlePost($message);
-  });
-  $websocket->init($argv[0], $argv[1]);
+	global $argv;
+	
+	if(count($argv)!=3){
+		exit("[Error] the system need 2 agument. Host and port. The server could not start");
+	}
+	
+	$path = realpath(dirname(__FILE__)."../")."\\websocket.txt";
+	
+	$fopen = fopen($path, "w");
+	fwrite($fopen, serialize([
+			"host" => $argv[1],
+			"port" => $argv[2]
+	]));
+	fclose($fopen);
+	
+	ShoutDown::add(function (){
+		if(is_cli()&&file_exists("include/websocket.txt"))
+			@unlink("include/websocket.txt");
+	});
+	
+	WebSocketCache::$cache = $websocket = new WebSocket($argv[1], $argv[2]);
+	
+	if(!$websocket->init()){
+		echo "WebSocket failed to initlize\r\n";
+		return;
+	}
+	
+	$websocket->appendEvents("onmessage", function (WebSocketClient $client, $data){
+		echo "[C]".$data."\r\n";
+		Session::set_current(empty($client->connectionData["token"]) ? null : $client->connectionData["token"]);
+		handlePost($data);
+	});
+	
+	$websocket->appendEvents("onclose", function(WebSocketClient $client){
+		if(empty($client->connectionData["token"]))
+			return;//this user is never login :)
+		
+		$user = User::get($client->connectionData["token"]);
+		foreach($user->getChannelNames() as $name){
+			$user->leave_channel($name);
+		}
+	});
+	
+	$websocket->listen();
+	
+	return false;
 }
-
-function serverAjaxStart(){
-  
-}
-
+function serverAjaxStart(){}
 function handlePost($message){
-   //is this globel message or is it channel message. 
-   //globel message "Command: data
-   //channel "Command Channel: data
-   $first = explode(" ", substr($message, 0, strpos($message, ": ")));
-   $data  = substr($message, strpos($message, ": ")+1);
-
-   //control if the user has a token. 
-   if(Session::getCurrentToken() == null){
-      if(count($first) == 1 && $first[0] == "LOGIN")
-        if(!is_cli() && cookie("identify") != $data){
-          send("ERROR: Token is broken");
-          return;
-        }
-        globel_login($data);
-      else
-        send("ERROR: You are not login yet", true);
-      return;
-   }
-
-   if(count($first) == 1){
-     handleGlobelPost($first[0], $data);
-   }else{
-     hansleChannelMessage($first[0], $first[1], $data);
-   }
+	// is this globel message or is it channel message.
+	// globel message "Command: data
+	// channel "Command Channel: data
+	$first = explode(" ", substr($message, 0, strpos($message, ": ")));
+	$data = substr($message, strpos($message, ": ")+2);
+	
+	// control if the user has a token.
+	if(Session::getCurrentToken()==null){
+		if(count($first)==1&&$first[0]=="LOGIN"){
+			if(!is_cli()&&cookie("identify")!=$data){
+				send("ERROR: Token is broken");
+				return;
+			}
+			globel_login($data);
+		}else{
+			send("ERROR: You are not login yet", true);
+		}
+		return;
+	}
+	
+	if(count($first)==1){
+		$channel = handleGlobelPost($first[0], $data);
+	}else{
+		$channel = hansleChannelMessage($first[0], $first[1], $data);
+	}
+	
+	//save the post (both in ajax and websocket)
+	Database::insert("message", [
+			'uid'     => get_user()->id(),
+			'message' => $message,
+			'channel' => $channel
+	]);
 }
-
 function handleGlobelPost($command, $data){
-   switch($command){
-      case "JOIN":
-        globel_join($data);
-      break;
-   }
+	switch($command){
+		case "JOIN":
+			globel_join($data);
+		break;
+	}
 }
-
-function handleChannelPost($command, $channel, $data){
-
-}
-
+function handleChannelPost($command, $channel, $data){}
 function send($msg, $private = false){
-  if(is_cli()){
-    WebSocketSend($msg, $private);
-  }else{
-  
-  }
+	if(is_cli()){
+		WebSocketSend($msg, $private);
+	}else{}
 }
-
 function send_channel($channel, $message){
-   Channel::renderUsersInChannel($channel, function(ChannelMember $member) use($channel, $message){
-      if(is_cli()){
-        WebSocketSend($message, false, $member->getUser(), $channel);
-      }
-   });
+	Channel::renderUsersInChannel($channel, function (ChannelMember $member) use($channel, $message){
+		if(is_cli()){
+			WebSocketSend($message, false, $member->getUser(), $channel);
+		}
+	});
 }
-
 function WebSocketSend($msg, $private, $user = null, $channel = null){
-    if($private){
-      //wee send it right away now.
-      WebSocketCache::$cache->write_line($msg);
-      return;
-    }
-
-    WebSocketCache::$cache->render_clients(function(WebSocketClient $client) use($user, $message){
-        if(!empty($client->connectionData["token"]) && $client->connectionData["token"] == $user->token()){
-          $client->write_line($message);
-        }
-    });
+	if($private){
+		WebSocketCache::$cache->getCurrent()->write_line($msg);
+		return;
+	}
+	
+	WebSocketCache::$cache->render_clients(function (WebSocketClient $client) use($msg){
+		if(array_key_exists("token", $client->connectionData)){
+			$client->write_line($msg);
+		}
+	});
+}
+function ip(){
+	if(is_cli()){
+		return WebSocketCache::$cache->getCurrent()->ip();
+	}
+	
+	return $_SERVER['REMOTE_ADDR'];
 }
 
 /**
-Ajax server need to set varibels and header. This is happens here
-*/
+ * Ajax server need to set varibels and header.
+ * This is happens here
+ */
 function init_ajax(){
- Ajax::header([
-   ["Content-Type",  "application/json"],
-   ["Cache-Control", "no-store, no-cache, must-revalidate, max-age=0"],
-   ["Cache-Control", "post-check=0, pre-check=0", false],
-   ["Pragma",        "no-cache"],
- ]);
- //start session handler :) 
- $sessionOk = false;
- if(cookie("identify") && Session::add_token(cookie("identify"))){
-   $sessionOk = true;
- }
-
- if(!$sessionOk){
-   Session::set_current(Session::create());
- }
+	Ajax::header([
+			[
+					"Content-Type",
+					"application/json"
+			],
+			[
+					"Cache-Control",
+					"no-store, no-cache, must-revalidate, max-age=0"
+			],
+			[
+					"Cache-Control",
+					"post-check=0, pre-check=0",
+					false
+			],
+			[
+					"Pragma",
+					"no-cache"
+			]
+	]);
 }

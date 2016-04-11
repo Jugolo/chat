@@ -4,8 +4,7 @@ function database_config(){
 
   if($c != null)
    return $c;
- 
-  include(realpath(dirname(__FILE__)."../../config.php"));
+  include(realpath(dirname(__FILE__)."../../../../")."\\config.php");
   return $c = [
     "host" => $db_host,
     "user" => $db_user,
@@ -19,12 +18,12 @@ class Config{
   private static $data = [];
 
   public static function init(){
-    $sql = Database::query("SELECT * FROM `".table("config")."`");
+    $sql = Database::query("SELECT `key`, `value` FROM `".table("config")."`");
     while($row = $sql->fetch())
       self::$data[$row["key"]] = $row["value"];
   }
 
-  public function get($key){
+  public static function get($key){
     return self::$data[$key];
   }
 }
