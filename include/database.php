@@ -17,6 +17,8 @@ class Database{
     $con = self::$connection = new mysqli($data["host"], $data["user"], $data["pass"], $data["data"]);
     if($con->connect_error)
       return $con->connect_error;
+    
+    $con->set_charset("UTF-8");
      
     self::$prefix = $data["prefix"];
     ShoutDown::add(function(){
@@ -28,10 +30,14 @@ class Database{
 
   public static function query($request){
       $query = self::$connection->query($request);
-      if(is_bool($query))
+      if(is_bool($query) || $query == null)
         return $query;
 
       return new DatabaseResult($query);
+  }
+  
+  public static function error(){
+  	return [self::$connection->error, self::$connection->errno];
   }
 
   public static function insert($table, array $data){
@@ -59,7 +65,10 @@ class Database{
 
      foreach($data as $key => $values){
         $row[]   = $key;
-        $value[] = self::qlean($values);
+        if(is_array($values))
+        	$value = $values[0];
+        else
+        	$value[] = self::qlean($values);
      }
 
      return "INSERT INTO `".table($table)."` (`".implode("`,`", $row)."`) VALUES (".implode(",", $value).")";

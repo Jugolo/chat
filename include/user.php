@@ -14,6 +14,10 @@ function getUserById($id){
 
 class User{
   private static $user = [];
+  
+  public static function numberUser(){
+  	return count(self::$user);
+  }
 
   public static function run($callback){
     $sql = Database::query("SElECT * FROM `".table("user")."`");
@@ -44,6 +48,7 @@ class User{
      $sql = Database::query("SELECT * FROM `".table("user")."` WHERE `token`=".Database::qlean($token));
      if($sql->rows() == 1){
        self::$user[$token] = new UserData($sql->fetch());
+       cli_title();
        return true;
      }
 

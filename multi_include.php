@@ -13,8 +13,13 @@ include("include/channel.php");
 include("include/user.php");
 include("include/websocket.php");
 include("include/shutdown.php");
+include("include/error.php");
+include("include/logger.php");
+include("include/garbage_collect.php");
+include("include/define.php");
 
 
 //globel command
 include("include/command/globel/login.php");
 include("include/command/globel/join.php");
+include("include/command/globel/title.php");

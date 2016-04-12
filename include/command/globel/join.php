@@ -8,9 +8,7 @@ function globel_join($channels){
 
 function join_channel($channel){
    if(preg_match("/^\#([a-zA-Z]*?)$/", $channel)){
-      $user = get_user();
-      $user->join_channel($channel);
-      send_channel($channel, "JOIN: ".$user->nick());
+   	  get_user()->join_channel($channel);
    }else{
       send("ERROR: invalid channel on join command");
    }

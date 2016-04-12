@@ -2,6 +2,7 @@ window.onload = start_chat;
 var wsr = null;
 var unsuccessfulLogin = 0;
 var config = [];
+var container = [];
 
 var AjaxRespond = (function() {
 	function AjaxRespond(obj) {
@@ -23,6 +24,50 @@ var AjaxRespond = (function() {
 	return AjaxRespond;
 })();
 
+function appendTab(handler){
+	function createTab(handler){
+		var container = document.createElement("span");
+		container.className = "chat_tab";
+		
+		if(typeof handler.icon !== "undefined"){
+			//append icon
+			var icon = document.createElement("img");
+			icon.className = "chat_tab_icon";
+			container.appendChild(icon);
+		}
+		
+		//control for name
+		if(typeof handler.name !== "undefined"){
+			container.appendChild(document.createTextNode(handler.name));
+		}
+		
+		//append it to the tab list
+		document.getElementById("chat_tap_container").appendChild(container);
+	}
+	
+	//create tab
+	createTab(handler);
+}
+
+var ChannelHandler = (function(){
+	function ChannelHandler(name){
+		this.name = name;
+		appendTab(this);
+		//wee want to get a title on this channel :)
+		send("TITLE: "+this.name);
+	}
+	
+	ChannelHandler.prototype.onBlur = function(){
+		
+	};
+	
+	ChannelHandler.prototype.onFocus = function(){
+		
+	};
+	
+	return ChannelHandler;
+})();
+
 function get(url, callback) {
 	var ajax = new XMLHttpRequest();
 	ajax.open("GET", url, true);
@@ -35,11 +80,13 @@ function get(url, callback) {
 }
 
 function start_chat() {
+	console.log("Chat loading")
 	// wee send a get request to status.php to see what wee should do here :)
 	get("status.php", function(ajax) {
 		var json = ajax.toJson();
 		config = json["config"];
 		if (json['isWebSocket']) {
+			console.log("Chat connect to websocket");
 			startWebSocket(json["host"], json["port"]);
 		} else {
 
@@ -52,6 +99,7 @@ function startWebSocket(host, port) {
 
 	websocket.onerror = function(evt) {
 		console.log(evt.data);
+		console.log("Error on websocket connecttion: "+evt.data);
 	};
 
 	websocket.onmessage = function(evt) {
@@ -83,6 +131,13 @@ function cookie(name) {
 }
 
 function init_server() {
+	var elemtns = document.getElementsByClassName("not_loaded");
+	for(var i=0;i<elemtns.length;i++){
+		var item = elemtns[i];
+		var names = item.className.split(" ");
+		names.splice(names.indexOf("not_loaded"), 1);
+		item.className = names.join(" ");
+	}
 	login();
 }
 
@@ -98,12 +153,40 @@ function handleMessage(msg) {
 	if (first.length == 1) {
 		handleGlobel(first[0], data);
 	} else {
-
+		handleChannelCommand(first[0], first[1], data);
 	}
 }
 
+function handleChannelCommand(command, channel, data){
+	switch(command){
+	case "JOIN":
+		handleJoin(channel, data);
+		break;
+	}
+}
+
+function handleJoin(name, user){
+	var channel = getChannel(name);
+	if(channel == null){
+		//it is my join
+		newChannel(name);
+	}else{
+		
+	}
+}
+
+function getChannel(name){
+	for(var i=0;i<container.length;i++){
+		var c = container[i];
+		if(c instanceof ChannelHandler && c.name == name){
+			return c;
+		}
+	}
+	
+	return null;
+}
+
 function handleGlobel(command, data) {
-	console.log("'"+data+"'");
 	switch (command) {
 	case "LOGIN":
 		handleLoginRespons(data);
@@ -111,11 +194,26 @@ function handleGlobel(command, data) {
 	}
 }
 
+function newChannel(name){
+	container.push(new ChannelHandler(name));
+}
+
 function handleLoginRespons(data) {
 	if(data == "true"){
 		unsuccessfulLogin = 0;
 		var channels = config["startChannel"].split(",");
-		for(i=0;i<channels.length;i++){
+		//remove the channels wee alredy are in :)
+		var current = inChannels();
+		var append  = {};
+		for(var i=0;i<current.length;i++){
+			if(channels.indexOf(current[i]) != -1){
+				channels.splice(channels.indexOf(current[i]), 1);
+			}
+			newChannel(current[i]);
+		}
+		
+		//okay let us join the main channels :)
+		for(var i=0;i<channels.length;i++){
 			send("JOIN: "+channels[i]);
 		}
 		return;

@@ -16,9 +16,9 @@ function serverSocketStart(){
 		exit("[Error] the system need 2 agument. Host and port. The server could not start");
 	}
 	
-	$path = realpath(dirname(__FILE__)."../")."\\websocket.txt";
+	define("WEBSOCKET_CONFIG_PATH", realpath(dirname(__FILE__)."../")."\\websocket.txt");
 	
-	$fopen = fopen($path, "w");
+	$fopen = fopen(WEBSOCKET_CONFIG_PATH, "w");
 	fwrite($fopen, serialize([
 			"host" => $argv[1],
 			"port" => $argv[2]
@@ -26,8 +26,8 @@ function serverSocketStart(){
 	fclose($fopen);
 	
 	ShoutDown::add(function (){
-		if(is_cli()&&file_exists("include/websocket.txt"))
-			@unlink("include/websocket.txt");
+		if(is_cli()&&file_exists(WEBSOCKET_CONFIG_PATH))
+			@unlink(WEBSOCKET_CONFIG_PATH);
 	});
 	
 	WebSocketCache::$cache = $websocket = new WebSocket($argv[1], $argv[2]);
@@ -36,6 +36,8 @@ function serverSocketStart(){
 		echo "WebSocket failed to initlize\r\n";
 		return;
 	}
+	
+	cli_title();
 	
 	$websocket->appendEvents("onmessage", function (WebSocketClient $client, $data){
 		echo "[C]".$data."\r\n";
@@ -51,6 +53,17 @@ function serverSocketStart(){
 		foreach($user->getChannelNames() as $name){
 			$user->leave_channel($name);
 		}
+		
+		cli_title(User::numberUser(), 0);
+	});
+	
+	$websocket->appendEvents("onconnect", function(){
+		cli_title();
+	});
+	
+	$websocket->appendEvents("newcyclus", function(){
+		echo "hehe\r\n";
+		garbage_collect();
 	});
 	
 	$websocket->listen();
@@ -80,16 +93,18 @@ function handlePost($message){
 	}
 	
 	if(count($first)==1){
-		$channel = handleGlobelPost($first[0], $data);
+		handleGlobelPost($first[0], $data);
+		return;
 	}else{
-		$channel = hansleChannelMessage($first[0], $first[1], $data);
+		handleChannelPost($first[0], $first[1], $data);
 	}
 	
 	//save the post (both in ajax and websocket)
 	Database::insert("message", [
 			'uid'     => get_user()->id(),
 			'message' => $message,
-			'channel' => $channel
+			'channel' => Channel::get($first[1])->id(),
+			'sent'    => time(),
 	]);
 }
 function handleGlobelPost($command, $data){
@@ -97,15 +112,30 @@ function handleGlobelPost($command, $data){
 		case "JOIN":
 			globel_join($data);
 		break;
+		case "TITLE":
+			get_title($data);
+		break;
 	}
 }
-function handleChannelPost($command, $channel, $data){}
+function handleChannelPost($command, $channel, $data){
+	switch(strtolower($command)){
+		case "title":
+			
+		break;
+	}
+}
 function send($msg, $private = false){
 	if(is_cli()){
 		WebSocketSend($msg, $private);
 	}else{}
 }
+/**
+ * Send a message to users in a given channel. 
+ * @param string $channel name of channel
+ * @param string $message message to send to the channel
+ */
 function send_channel($channel, $message){
+	Channel::get($channel)->log($message);
 	Channel::renderUsersInChannel($channel, function (ChannelMember $member) use($channel, $message){
 		if(is_cli()){
 			WebSocketSend($message, false, $member->getUser(), $channel);

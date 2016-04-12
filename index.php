@@ -51,6 +51,16 @@ class User{
 			$this->data["token"] = cookie("identify");
 		} 
 	}
+	public function renderChannelList($callback){
+		$list = "";
+		$query = dbquery("SELECT c.id AS id, c.name AS name FROM `".DB_PREFIX."chat_channels` AS c
+			     LEFT JOIN `".DB_PREFIX."chat_channel_member` AS m ON c.id=m.cid
+				 WHERE m.uid='".$this->data["id"]."'");
+		while($row = dbarray($query)){
+			$list = $callback($row['id'], $row['name'], $list);
+		}
+		return $list;
+	}
 	private function createNick(){
 		$use = "qwertyuioplkjhgfdsazxcvbnmQWERTYUIOPLKJHGFDSAZXCVBNM1234567890";
 		$return = "";
@@ -222,7 +232,16 @@ Session::set("last_id", $row["id"] == "" ? 0 : $row['id']);
 //wee can start the page here ;)
 require_once INCLUDES."infusions_include.php";
 require_once THEMES."templates/header.php";
-add_to_head("<script>".file_get_contents("include/style/js/main.js")."</script>");
+add_to_head("<style>".file_get_contents("include/style/css/main.css")."</style>");
+add_to_head("<script>".file_get_contents("include/style/js/main.js")."
+ //here wee return a list of channel the member allready is in
+ function inChannels(){
+	var list = []".$user->renderChannelList(function($id, $name, $list){
+		return $list."\r\n    list.push('".$name."');";
+	})."
+    return list;
+ }
+</script>");
 opentable("Chat");
 include "include/style/chat.php";
 closetable();

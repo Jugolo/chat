@@ -45,6 +45,10 @@ class Session{
         return true;
 
       $sql = Database::query("SELECT * FROM `".table("session_data")."` WHERE `token`=".Database::qlean($token)." OR `ip`=".Database::qlean(ip()));
+      if(!$sql){
+      	$error = Database::error();
+      	trigger_error("SQL FAIL\r\n[Number]".$error[0]."\r\n[Message]".$error[1]);
+      }
       if($sql->rows() == 1){
          $row = $sql->fetch();
          if($row["ip"] == ip() && $row["token"] == $token){

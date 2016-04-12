@@ -17,8 +17,11 @@ class WebSocket{
 		$this->host = $host;
 		$this->port = $port;
 	}
+	public function connectionCount(){
+		return count($this->clients);
+	}
 	public function render_clients($callback){
-		foreach ($this->clients as $client){
+		foreach($this->clients as $client){
 			$callback($client);
 		}
 	}
@@ -64,6 +67,7 @@ class WebSocket{
 	public function listen(){
 		$this->run = true; // if the websocket is stopped befor start it here
 		while($this->run){
+			$this->triggerEvents("newcyclus", null, false);
 			$read = $this->connections;
 			$write = $ex = null;
 			@socket_select($read, $write, $ex, null);
@@ -71,16 +75,15 @@ class WebSocket{
 				$this->newClient(socket_accept($this->socket));
 			}else{
 				foreach($read as $socket){
-					//wee set the current client :)
+					// wee set the current client :)
+					$controlDiconect = true;
 					$this->currentClient = $this->getClient($socket);
-					while (@socket_recv($socket, $buf, 1024, 0) >= 1){
+					while($buffer = @socket_recv($socket, $buf, 1024, 0)>=1){
+						$controlDiconect = false;
 						$this->triggerEvents("onmessage", $this->unmask($buf));
-						break 2;
 					}
 					
-					//look up after disconnected user :)
-					$buffer = @socket_read($socket, 1024, PHP_NORMAL_READ);
-					if($buffer == null){
+					if($buffer == false || $buffer == 0){
 						$this->removeClient($socket);
 					}
 				}
@@ -88,19 +91,20 @@ class WebSocket{
 		}
 	}
 	private function newClient($stream, $onStart = false){
-		if($stream < 0){
+		if($stream<0){
 			echo "Fail to accept socket: ".$stream."\r\n";
 			return;
 		}
 		$this->connections[] = $stream;
-		$this->clients[] = $obj = new WebSocketClient($stream);
-		if(!$onStart)
-			$this->handshake($stream);
-		return $obj;
+		if(!$onStart && $this->handshake($stream)){
+			$this->clients[] = $this->currentClient = new WebSocketClient($stream);
+			$this->triggerEvents("onconnect", null);
+		}
+		return $this->currentClient;
 	}
 	private function removeClient($stream){
 		echo "Remove client: ".$stream."\r\n";
-		//trigger event onclose
+		// trigger event onclose
 		$this->triggerEvents("onclose", null);
 		unset($this->connections[array_search($stream, $this->connections)]);
 		for($i = 0; $i<count($this->clients); $i++)
@@ -112,7 +116,7 @@ class WebSocket{
 		@socket_close($stream);
 	}
 	private function getClient($stream){
-		for($i=0;$i<count($this->clients);$i++){
+		for($i = 0; $i<count($this->clients); $i++){
 			if($this->clients[$i]->isStream($stream)){
 				return $this->clients[$i];
 			}
@@ -150,32 +154,33 @@ class WebSocket{
 			exit("Handshake fail");
 		}
 		echo "New client connected to server\r\n";
-		return null;
+		return true;
 	}
-	
 	private function unmask($text){
-			$length = ord($text[1]) & 127;
-	if ($length == 126) {
-		$masks = substr($text, 4, 4);
-		$data = substr($text, 8);
-	} elseif ($length == 127) {
-		$masks = substr($text, 10, 4);
-		$data = substr($text, 14);
-	} else {
-		$masks = substr($text, 2, 4);
-		$data = substr($text, 6);
+		$length = ord($text[1])&127;
+		if($length==126){
+			$masks = substr($text, 4, 4);
+			$data = substr($text, 8);
+		}elseif($length==127){
+			$masks = substr($text, 10, 4);
+			$data = substr($text, 14);
+		}else{
+			$masks = substr($text, 2, 4);
+			$data = substr($text, 6);
+		}
+		$text = "";
+		for($i = 0; $i<strlen($data); ++$i){
+			$text .= $data[$i]^$masks[$i%4];
+		}
+		return $text;
 	}
-	$text = "";
-	for ($i = 0; $i < strlen($data); ++$i) {
-		$text.= $data[$i] ^ $masks[$i % 4];
-	}
-	return $text;
-	}
-	
-	private function triggerEvents($name, $data){
+	private function triggerEvents($name, $data, $enableClient = true){
 		if(!empty($this->events[$name])){
 			$buffer = $this->events[$name];
-			$buffer($this->currentClient, $data);
+			if($enableClient)
+				$buffer($this->currentClient, $data);
+			else 
+				$buffer($data);
 		}
 	}
 }
@@ -191,7 +196,7 @@ class WebSocketClient{
 	}
 	public function write_line($str){
 		$string = $this->mask($str);
-		if(!$s = @socket_write($this->stream, $string."\r\n", strlen($string."\r\n")))
+		if(!$s = @socket_write($this->stream, $string, strlen($string)))
 			echo "[".$this->stream."]failed to write the line: ".$str."\r\n";
 		
 		echo "[S]".$str."\r\n";
@@ -207,23 +212,23 @@ class WebSocketClient{
 	}
 	private function mask($data){
 		$frame = array();
-        $encoded = "";
-        $frame[0] = 0x81;
-        $data_length = strlen($data);
-
-        if($data_length <= 125){
-            $frame[1] = $data_length;
-        }else{
-            $frame[1] = 126;
-            $frame[2] = $data_length >> 8;
-            $frame[3] = $data_length & 0xFF;
-        }
-
-        for($i=0;$i<sizeof($frame);$i++){
-            $encoded .= chr($frame[$i]);
-        }
-
-        $encoded .= $data;
-        return $encoded;
+		$encoded = "";
+		$frame[0] = 0x81;
+		$data_length = strlen($data);
+		
+		if($data_length<=125){
+			$frame[1] = $data_length;
+		}else{
+			$frame[1] = 126;
+			$frame[2] = $data_length>>8;
+			$frame[3] = $data_length&0xFF;
+		}
+		
+		for($i = 0; $i<sizeof($frame); $i++){
+			$encoded .= chr($frame[$i]);
+		}
+		
+		$encoded .= $data;
+		return $encoded;
 	}
 }

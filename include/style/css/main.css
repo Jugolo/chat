@@ -1,0 +1,9 @@
+#chat_container{
+	background-color: #0066ff;
+	height:550px;
+}
+
+
+.not_loaded{
+	display:none;
+}

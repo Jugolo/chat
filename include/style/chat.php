@@ -1,5 +1,5 @@
 <?php
-echo "<div id='chat_container'>";
+echo "<div id='chat_container' class='not_loaded'>";
  echo "<div id='chat_tap_container'>";
  
  echo "</div>";
