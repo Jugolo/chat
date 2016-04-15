@@ -1,4 +1,5 @@
 <?php
+define("CHAT_VERSION", "V0.0.3");
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
  class Server{
