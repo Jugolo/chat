@@ -1,5 +1,5 @@
 <?php
-define("CHAT_VERSION", "V0.0.3");
+define("CHAT_VERSION", "V0.0.4");
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
  class Server{
@@ -37,7 +37,6 @@ ini_set('display_errors', '1');
 		$this->websocket = $websocket;
 
         $this->loadPages();
-        $this->init_db();
         $this->init_system_setting();
         $this->init_lang();
 		$this->loadVariabel();
@@ -1472,22 +1471,17 @@ ini_set('display_errors', '1');
          return $this->sConfig[$name];
      }
 
-     private function init_db(){
+     private function init_db($host, $user, $pass, $name){
          $this->database = new DatabaseHandler(
-             $this->getVariabel("db_host"),
-             $this->getVariabel("db_user"),
-             $this->getVariabel("db_pass"),
-             $this->getVariabel("db_data")
+             $host,
+             $user,
+             $pass,
+             $name
          );
 
          if($this->database->isError){
              exit($this->database->getError());
-         }
-
-         unset($this->variabel['db_host']);
-         unset($this->variabel['db_user']);
-         unset($this->variabel['db_pass']);
-         unset($this->variabel['db_data']);
+	 }
      }
     
     private function loadPages(){
@@ -1517,10 +1511,13 @@ ini_set('display_errors', '1');
             include($this->get_base_part(3)."config.php");
         else
             include("../../config.php");
-        $this->variabel['db_host'] = $db_host;
-        $this->variabel['db_user'] = $db_user;
-        $this->variabel['db_pass'] = $db_pass;
-        $this->variabel['db_data'] = $db_name;
+	    
+	$this->init_db(
+		$db_host,
+		$db_user,
+		$db_pass,
+		$db_name
+		);
     }
     
     //user sektion
