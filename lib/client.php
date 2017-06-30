@@ -81,7 +81,7 @@ function jugoloChatCLientAddSmylie(){
 
     $use = null;
     for($i=0;$i<count($smiley_cache);$i++){
-        $use .= "system.setSmylie('".addslash($smiley_cache[$i]['smiley_text'])."','".addslash($smiley_cache[$i]['smiley_code'])."','".addslash(IMAGES."smiley/".$smiley_cache[$i]['smiley_image'])."','".addslash(preg_quote($smiley_cache[$i]['smiley_code']))."')\r\n";
+        $use .= "system.setSmylie('".htmlentities($smiley_cache[$i]['smiley_text'])."','".htmlentities($smiley_cache[$i]['smiley_code'])."','".htmlentities(IMAGES."smiley/".$smiley_cache[$i]['smiley_image'])."','".htmlentities(preg_quote($smiley_cache[$i]['smiley_code']))."')\r\n";
     }
 
     return $use;
