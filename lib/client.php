@@ -1,4 +1,10 @@
 <?php
+//this is a quick hack to avoid the chat dont want to show the message.
+//It is becuse it dont escape \ properly so here wee do it at our self
+function jugoloChatProperlyEscapeBackSlash($str){
+ return str_replace("\\", "\\\\", $str);   
+}
+
 function jugoloChatClientReturnUserStat(){
     global $userdata;
 
@@ -81,7 +87,7 @@ function jugoloChatCLientAddSmylie(){
 
     $use = null;
     for($i=0;$i<count($smiley_cache);$i++){
-        $use .= "system.setSmylie('".htmlentities($smiley_cache[$i]['smiley_text'])."','".htmlentities($smiley_cache[$i]['smiley_code'])."','".htmlentities(IMAGES."smiley/".$smiley_cache[$i]['smiley_image'])."','".htmlentities(preg_quote($smiley_cache[$i]['smiley_code']))."')\r\n";
+        $use .= "system.setSmylie('".jugoloChatProperlyEscapeBackSlash(htmlentities($smiley_cache[$i]['smiley_text']))."','".jugoloChatProperlyEscapeBackSlash(htmlentities($smiley_cache[$i]['smiley_code']))."','".jugoloChatProperlyEscapeBackSlash(htmlentities(IMAGES."smiley/".$smiley_cache[$i]['smiley_image']))."','".jugoloChatProperlyEscapeBackSlash(htmlentities(preg_quote($smiley_cache[$i]['smiley_code'])))."')\r\n";
     }
 
     return $use;
